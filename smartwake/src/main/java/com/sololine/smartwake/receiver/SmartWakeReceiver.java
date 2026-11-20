@@ -22,7 +22,7 @@ public class SmartWakeReceiver extends BroadcastReceiver {
         if (Intent.ACTION_SCREEN_ON.equals(action)) {
             if (SmartWakeConfig.isEnabled(context)) {
                 Log.d(TAG, "Screen-On detected. Triggering SmartWake LockScreen Activity.");
-                SmartWake.launchLockScreen(context);
+                SmartWake.showNow(context);
             }
         }
     }

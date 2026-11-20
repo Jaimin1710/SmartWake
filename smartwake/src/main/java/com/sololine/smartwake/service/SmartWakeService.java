@@ -16,7 +16,6 @@ import androidx.core.app.NotificationCompat;
 
 import com.sololine.smartwake.R;
 import com.sololine.smartwake.SmartWake;
-import com.sololine.smartwake.SmartWakeConfig;
 import com.sololine.smartwake.SmartWakeListener;
 import com.sololine.smartwake.receiver.SmartWakeReceiver;
 
@@ -34,7 +33,6 @@ public class SmartWakeService extends Service {
         super.onCreate();
         Log.d(TAG, "SmartWakeService onCreate");
 
-        createNotificationChannel();
         registerScreenReceiver();
     }
 
@@ -42,9 +40,15 @@ public class SmartWakeService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "SmartWakeService onStartCommand");
 
+        // Try foreground notification safely if permitted, otherwise run as background service seamlessly
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification notification = createNotification();
-            startForeground(NOTIFICATION_ID, notification);
+            try {
+                createNotificationChannel();
+                Notification notification = createNotification();
+                startForeground(NOTIFICATION_ID, notification);
+            } catch (Exception e) {
+                Log.w(TAG, "Could not start foreground notification (Running in standard background mode): " + e.getMessage());
+            }
         }
 
         SmartWakeListener listener = SmartWake.getListener();
@@ -69,7 +73,7 @@ public class SmartWakeService extends Service {
                 registerReceiver(screenReceiver, filter);
             }
             isRegistered = true;
-            Log.d(TAG, "Screen-On/Off Receiver registered successfully.");
+            Log.d(TAG, "Screen-On Receiver registered successfully.");
         }
     }
 
@@ -81,7 +85,7 @@ public class SmartWakeService extends Service {
                 Log.e(TAG, "Error unregistering receiver", e);
             }
             isRegistered = false;
-            Log.d(TAG, "Screen-On/Off Receiver unregistered.");
+            Log.d(TAG, "Screen-On Receiver unregistered.");
         }
     }
 
@@ -92,7 +96,7 @@ public class SmartWakeService extends Service {
                     "SmartWake Service",
                     NotificationManager.IMPORTANCE_LOW
             );
-            channel.setDescription("Keeps SmartWake screen-on monitoring active in background.");
+            channel.setDescription("Keeps SmartWake screen-on monitoring active.");
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.createNotificationChannel(channel);
@@ -104,11 +108,11 @@ public class SmartWakeService extends Service {
         Intent launchIntent = getPackageManager().getLaunchIntentForPackage(getPackageName());
         PendingIntent pendingIntent = null;
         if (launchIntent != null) {
-            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            int pFlags = PendingIntent.FLAG_UPDATE_CURRENT;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                flags |= PendingIntent.FLAG_IMMUTABLE;
+                pFlags |= PendingIntent.FLAG_IMMUTABLE;
             }
-            pendingIntent = PendingIntent.getActivity(this, 0, launchIntent, flags);
+            pendingIntent = PendingIntent.getActivity(this, 0, launchIntent, pFlags);
         }
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
