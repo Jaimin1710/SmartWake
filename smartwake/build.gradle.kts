@@ -1,6 +1,6 @@
 plugins {
     alias(libs.plugins.android.library)
-    id("maven-publish") // 👈 Maven Publish Plugin
+    id("maven-publish")
 }
 
 android {
@@ -36,15 +36,11 @@ android {
     }
 }
 
-// 👈 JitPack Publishing Configuration
 afterEvaluate {
     publishing {
         publications {
             create<MavenPublication>("release") {
                 from(components["release"])
-                groupId = "com.github.Jaimin1710"
-                artifactId = "smartwake"
-                version = "1.0.0"
             }
         }
     }
