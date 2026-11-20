@@ -41,13 +41,23 @@ afterEvaluate {
         publications {
             create<MavenPublication>("release") {
                 from(components["release"])
+                groupId = "com.github.Jaimin1710"
+                artifactId = "smartwake"
+            }
+            create<MavenPublication>("releaseRepo") {
+                from(components["release"])
                 groupId = "com.github.Jaimin1710.SmartWake"
                 artifactId = "smartwake"
             }
-            create<MavenPublication>("releaseDirect") {
+            create<MavenPublication>("releaseCapital") {
                 from(components["release"])
                 groupId = "com.github.Jaimin1710"
-                artifactId = "smartwake"
+                artifactId = "SmartWake"
+            }
+            create<MavenPublication>("releaseRepoCapital") {
+                from(components["release"])
+                groupId = "com.github.Jaimin1710.SmartWake"
+                artifactId = "SmartWake"
             }
         }
     }
