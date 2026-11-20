@@ -5,8 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import com.sololine.smartwake.SmartWake;
 import com.sololine.smartwake.SmartWakeConfig;
-import com.sololine.smartwake.ui.SmartWakeActivity;
 
 public class SmartWakeReceiver extends BroadcastReceiver {
 
@@ -21,12 +21,8 @@ public class SmartWakeReceiver extends BroadcastReceiver {
 
         if (Intent.ACTION_SCREEN_ON.equals(action)) {
             if (SmartWakeConfig.isEnabled(context)) {
-                Log.d(TAG, "Screen-On detected. Launching SmartWake LockScreen Activity.");
-                Intent activityIntent = new Intent(context, SmartWakeActivity.class);
-                activityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                        | Intent.FLAG_ACTIVITY_SINGLE_TOP
-                        | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                context.startActivity(activityIntent);
+                Log.d(TAG, "Screen-On detected. Triggering SmartWake LockScreen Activity.");
+                SmartWake.launchLockScreen(context);
             }
         }
     }

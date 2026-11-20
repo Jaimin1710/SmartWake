@@ -1,9 +1,18 @@
 package com.sololine.smartwake;
 
+import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
+import android.provider.Settings;
 import android.util.Log;
+
+import androidx.core.app.NotificationCompat;
 
 import com.sololine.smartwake.service.SmartWakeService;
 import com.sololine.smartwake.ui.SmartWakeActivity;
@@ -11,6 +20,7 @@ import com.sololine.smartwake.ui.SmartWakeActivity;
 public class SmartWake {
 
     private static final String TAG = "SmartWake";
+    private static final String FULL_SCREEN_CHANNEL_ID = "smartwake_fullscreen_channel";
     private static SmartWakeListener globalListener;
 
     /**
@@ -81,15 +91,84 @@ public class SmartWake {
     }
 
     /**
-     * Manually triggers and shows the SmartWake lock screen activity immediately.
+     * Launches the LockScreen Activity using FullScreenIntent & direct startActivity
+     * to bypass Android 10+ Background Activity Launch Restrictions.
      */
-    public static void showNow(Context context) {
+    public static void launchLockScreen(Context context) {
         if (context == null) return;
-        Intent intent = new Intent(context, SmartWakeActivity.class);
+        Context appContext = context.getApplicationContext();
+
+        Intent intent = new Intent(appContext, SmartWakeActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
                 | Intent.FLAG_ACTIVITY_SINGLE_TOP
                 | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        context.startActivity(intent);
+
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(appContext, 1002, intent, flags);
+
+        NotificationManager notificationManager = (NotificationManager) appContext.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    FULL_SCREEN_CHANNEL_ID,
+                    "SmartWake LockScreen Trigger",
+                    NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            if (notificationManager != null) {
+                notificationManager.createNotificationChannel(channel);
+            }
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(appContext, FULL_SCREEN_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_smartwake_lock)
+                .setContentTitle("SmartWake")
+                .setContentText("LockScreen active")
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setFullScreenIntent(fullScreenPendingIntent, true)
+                .setAutoCancel(true);
+
+        if (notificationManager != null) {
+            notificationManager.notify(1002, builder.build());
+        }
+
+        try {
+            appContext.startActivity(intent);
+        } catch (Exception e) {
+            Log.w(TAG, "Direct startActivity from background handled by FullScreenIntent: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Manually triggers and shows the SmartWake lock screen activity immediately.
+     */
+    public static void showNow(Context context) {
+        launchLockScreen(context);
+    }
+
+    /**
+     * Checks whether SYSTEM_ALERT_WINDOW (Display over other apps) permission is granted.
+     */
+    public static boolean hasOverlayPermission(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return Settings.canDrawOverlays(context);
+        }
+        return true;
+    }
+
+    /**
+     * Opens system settings to request Overlay ("Display over other apps") permission.
+     */
+    public static void requestOverlayPermission(Activity activity, int requestCode) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(activity)) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + activity.getPackageName()));
+            activity.startActivityForResult(intent, requestCode);
+        }
     }
 
     /**

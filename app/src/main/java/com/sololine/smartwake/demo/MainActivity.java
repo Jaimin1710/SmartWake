@@ -1,6 +1,7 @@
 package com.sololine.smartwake.demo;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -9,6 +10,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -23,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "SmartWakeDemo";
     private static final int REQ_NOTIFICATION_PERMISSION = 101;
+    private static final int REQ_OVERLAY_PERMISSION = 102;
 
     private TextView tvStatus;
     private MaterialSwitch switchSmartWake;
@@ -98,6 +101,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkPermissionAndStartService() {
+        if (!SmartWake.hasOverlayPermission(this)) {
+            Toast.makeText(this, "Please allow 'Display over other apps' permission", Toast.LENGTH_LONG).show();
+            SmartWake.requestOverlayPermission(this, REQ_OVERLAY_PERMISSION);
+            return;
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -111,6 +120,20 @@ public class MainActivity extends AppCompatActivity {
         }
         SmartWake.start(this);
         updateStatusUI(true);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_OVERLAY_PERMISSION) {
+            if (SmartWake.hasOverlayPermission(this)) {
+                checkPermissionAndStartService();
+            } else {
+                Toast.makeText(this, "Overlay permission is required for LockScreen overlay", Toast.LENGTH_SHORT).show();
+                switchSmartWake.setChecked(false);
+                updateStatusUI(false);
+            }
+        }
     }
 
     @Override
