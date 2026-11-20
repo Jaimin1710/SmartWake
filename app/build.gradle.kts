@@ -3,15 +3,13 @@ plugins {
 }
 
 android {
-    namespace = "com.sololine.smartwake"
-    compileSdk {
-        version = release(37)
-    }
+    namespace = "com.sololine.smartwake.demo"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.sololine.smartwake"
+        applicationId = "com.sololine.smartwake.demo"
         minSdk = 24
-        targetSdk = 37
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -20,18 +18,22 @@ android {
 
     buildTypes {
         release {
-            optimization {
-                enable = false
-            }
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
 dependencies {
+    implementation(project(":smartwake"))
     implementation(libs.appcompat)
     implementation(libs.material)
     testImplementation(libs.junit)

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="smartwake_app_name">SmartWake</string>
+    <string name="smartwake_default_title">SmartWake SDK</string>
+    <string name="smartwake_default_subtitle">Screen active. Swipe up to unlock.</string>
+    <string name="smartwake_swipe_hint">Swipe up to dismiss</string>
+    <string name="smartwake_desc_icon">SmartWake Icon</string>
+    <string name="smartwake_desc_swipe_icon">Swipe indicator</string>
+    <string name="smartwake_notification_title">SmartWake Active</string>
+    <string name="smartwake_notification_desc">SmartWake is monitoring screen state in background.</string>
+</resources>

@@ -1,3 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SmartWake</string>
+    <string name="app_name">SmartWake Demo</string>
+    <string name="title_sdk_demo">SmartWake SDK Demo</string>
+    <string name="desc_sdk_demo">Screen-On LockScreen Overlay SDK integration demo for 20+ apps.</string>
+    <string name="btn_test_lockscreen">Test LockScreen Now</string>
+    <string name="btn_custom_builder">Apply Custom Builder Config</string>
+    <string name="status_enabled">SmartWake Service: ACTIVE</string>
+    <string name="status_disabled">SmartWake Service: INACTIVE</string>
+    <string name="label_toggle_service">Enable SmartWake Service</string>
 </resources>

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/smartwake_root_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/smartwake_bg_overlay"
+    android:padding="24dp">
+
+    <!-- Clock and Date Header -->
+    <LinearLayout
+        android:id="@+id/smartwake_clock_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="48dp"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <TextClock
+            android:id="@+id/smartwake_text_clock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:format12Hour="hh:mm a"
+            android:format24Hour="HH:mm"
+            android:textColor="@color/smartwake_text_primary"
+            android:textSize="56sp"
+            android:textStyle="bold"
+            tools:text="10:45 AM" />
+
+        <TextClock
+            android:id="@+id/smartwake_text_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:format12Hour="EEEE, MMMM d"
+            android:format24Hour="EEEE, MMMM d"
+            android:textColor="@color/smartwake_text_secondary"
+            android:textSize="16sp"
+            tools:text="Monday, November 20" />
+    </LinearLayout>
+
+    <!-- Center Content Card -->
+    <LinearLayout
+        android:id="@+id/smartwake_card_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:background="@drawable/bg_smartwake_card"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <ImageView
+            android:id="@+id/smartwake_icon"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:contentDescription="@string/smartwake_desc_icon"
+            android:src="@drawable/ic_smartwake_lock" />
+
+        <TextView
+            android:id="@+id/smartwake_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:text="@string/smartwake_default_title"
+            android:textColor="@color/smartwake_text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/smartwake_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/smartwake_default_subtitle"
+            android:textColor="@color/smartwake_text_secondary"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- Bottom Swipe Indicator -->
+    <LinearLayout
+        android:id="@+id/smartwake_swipe_hint_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="32dp"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/smartwake_swipe_icon"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:contentDescription="@string/smartwake_desc_swipe_icon"
+            android:src="@drawable/ic_smartwake_swipe_up" />
+
+        <TextView
+            android:id="@+id/smartwake_swipe_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/smartwake_swipe_hint"
+            android:textColor="@color/smartwake_text_secondary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+</RelativeLayout>
