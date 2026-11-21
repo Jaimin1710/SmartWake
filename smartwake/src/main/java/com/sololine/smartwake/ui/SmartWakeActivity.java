@@ -18,7 +18,6 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.viewpager2.widget.ViewPager2;
@@ -50,20 +49,34 @@ public class SmartWakeActivity extends Activity {
         // Increment screen-on count index for ad rotation
         SmartWakeConfig.incrementScreenOnCount(this);
 
-        // Fetch cached or remote server configuration
-        String jsonConfig = SmartWakeConfig.getLastConfigJson(this);
-        SmartWakeRemoteModel model = SmartWakeApiClient.parseConfigJson(jsonConfig);
-
-        // Check if master switch is OFF from server
-        if (!model.showLockscreen) {
-            Log.d(TAG, "Server disabled SmartWake (show_lockscreen=false). Finishing Activity.");
-            finish();
-            return;
-        }
-
         setContentView(R.layout.activity_smart_wake);
 
-        setupServerUI(model);
+        String apiUrl = SmartWakeConfig.getApiUrl(this);
+        String jsonConfig = SmartWakeConfig.getLastConfigJson(this);
+
+        Log.d(TAG, "onCreate jsonConfig length: " + (jsonConfig != null ? jsonConfig.length() : 0) + ", apiUrl: " + apiUrl);
+
+        if ((jsonConfig == null || jsonConfig.trim().isEmpty()) && apiUrl != null && !apiUrl.trim().isEmpty()) {
+            new Thread(() -> {
+                SmartWakeRemoteModel fetchedModel = SmartWakeApiClient.fetchConfigSync(this, apiUrl);
+                runOnUiThread(() -> {
+                    if (!fetchedModel.showLockscreen) {
+                        finish();
+                        return;
+                    }
+                    setupServerUI(fetchedModel);
+                });
+            }).start();
+        } else {
+            SmartWakeRemoteModel model = SmartWakeApiClient.parseConfigJson(jsonConfig);
+            if (!model.showLockscreen) {
+                Log.d(TAG, "Server disabled SmartWake (show_lockscreen=false). Finishing.");
+                finish();
+                return;
+            }
+            setupServerUI(model);
+        }
+
         registerUnlockReceiver();
 
         View rootLayout = findViewById(R.id.smartwake_root_layout);
