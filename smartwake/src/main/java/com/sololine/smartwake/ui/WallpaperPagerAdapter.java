@@ -13,6 +13,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.sololine.smartwake.R;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -39,13 +41,14 @@ public class WallpaperPagerAdapter extends RecyclerView.Adapter<WallpaperPagerAd
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
         imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        imageView.setBackgroundResource(R.drawable.bg_smartwake_card);
         return new WallpaperViewHolder(imageView);
     }
 
     @Override
     public void onBindViewHolder(@NonNull WallpaperViewHolder holder, int position) {
         String url = wallpaperUrls.get(position);
-        holder.bindWallpaper(url);
+        holder.bindWallpaper(context, url);
     }
 
     @Override
@@ -61,12 +64,29 @@ public class WallpaperPagerAdapter extends RecyclerView.Adapter<WallpaperPagerAd
             this.imageView = (ImageView) itemView;
         }
 
-        public void bindWallpaper(String urlStr) {
+        public void bindWallpaper(Context context, String urlStr) {
             if (urlStr == null || urlStr.trim().isEmpty()) {
                 imageView.setImageResource(R.drawable.bg_smartwake_card);
                 return;
             }
 
+            // Check disk cache first for zero-latency local loading
+            String cacheFileName = "wp_" + Math.abs(urlStr.hashCode()) + ".jpg";
+            File cacheFile = new File(context.getCacheDir(), cacheFileName);
+
+            if (cacheFile.exists() && cacheFile.length() > 0) {
+                try {
+                    Bitmap cachedBitmap = BitmapFactory.decodeFile(cacheFile.getAbsolutePath());
+                    if (cachedBitmap != null) {
+                        imageView.setImageBitmap(cachedBitmap);
+                        Log.d(TAG, "Loaded wallpaper instantly from disk cache: " + cacheFileName);
+                        return;
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+
+            // Download asynchronously and save to disk cache
             new Thread(() -> {
                 try {
                     URL url = new URL(urlStr);
@@ -85,8 +105,14 @@ public class WallpaperPagerAdapter extends RecyclerView.Adapter<WallpaperPagerAd
                         is.close();
 
                         if (bitmap != null) {
+                            // Save to disk cache
+                            try (FileOutputStream fos = new FileOutputStream(cacheFile)) {
+                                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fos);
+                            } catch (Exception ignored) {
+                            }
+
                             imageView.post(() -> imageView.setImageBitmap(bitmap));
-                            Log.d(TAG, "Wallpaper loaded successfully from " + urlStr);
+                            Log.d(TAG, "Wallpaper downloaded & cached from " + urlStr);
                             return;
                         }
                     }

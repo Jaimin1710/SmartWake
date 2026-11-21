@@ -32,6 +32,7 @@ import com.sololine.smartwake.content.WeatherManager;
 import com.sololine.smartwake.model.SmartWakeRemoteModel;
 import com.sololine.smartwake.net.SmartWakeApiClient;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class SmartWakeActivity extends Activity {
@@ -126,11 +127,19 @@ public class SmartWakeActivity extends Activity {
         View btnReadMore = findViewById(R.id.smartwake_btn_read_more);
         View swipeIcon = findViewById(R.id.smartwake_swipe_icon);
 
+        Log.d(TAG, "setupServerUI displayMode: " + model.displayMode + ", wallpapers count: " + (model.wallpapers != null ? model.wallpapers.size() : 0));
+
         // 1. Display Mode: FULL_SCREEN (with Wallpapers) vs CENTER_DIALOG
-        if ("FULL_SCREEN".equalsIgnoreCase(model.displayMode) && model.showWallpapers && model.wallpapers != null && !model.wallpapers.isEmpty()) {
+        if ("FULL_SCREEN".equalsIgnoreCase(model.displayMode)) {
             if (viewPager != null) {
                 viewPager.setVisibility(View.VISIBLE);
-                viewPager.setAdapter(new WallpaperPagerAdapter(this, model.wallpapers));
+                List<String> urls = model.wallpapers;
+                if (urls == null || urls.isEmpty()) {
+                    urls = new ArrayList<>();
+                    urls.add("https://images.unsplash.com/photo-1506744038136-46273834b3fb");
+                    urls.add("https://images.unsplash.com/photo-1511884642898-4c92249e20b6");
+                }
+                viewPager.setAdapter(new WallpaperPagerAdapter(this, urls));
             }
         } else if (viewPager != null) {
             viewPager.setVisibility(View.GONE);
