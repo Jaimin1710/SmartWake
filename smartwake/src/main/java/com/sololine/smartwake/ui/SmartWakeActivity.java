@@ -60,12 +60,10 @@ public class SmartWakeActivity extends Activity {
         // Render immediately using last saved config
         if (jsonConfig != null && !jsonConfig.trim().isEmpty()) {
             SmartWakeRemoteModel model = SmartWakeApiClient.parseConfigJson(jsonConfig);
-            if (!model.showLockscreen) {
-                Log.d(TAG, "Server disabled SmartWake (show_lockscreen=false). Finishing.");
-                finish();
-                return;
-            }
             setupServerUI(model);
+        } else {
+            // Render default UI fallback
+            setupServerUI(new SmartWakeRemoteModel());
         }
 
         // Fetch fresh config from server asynchronously
@@ -73,11 +71,9 @@ public class SmartWakeActivity extends Activity {
             new Thread(() -> {
                 SmartWakeRemoteModel freshModel = SmartWakeApiClient.fetchConfigSync(this, apiUrl);
                 runOnUiThread(() -> {
-                    if (!freshModel.showLockscreen) {
-                        finish();
-                        return;
+                    if (freshModel != null && freshModel.showLockscreen) {
+                        setupServerUI(freshModel);
                     }
-                    setupServerUI(freshModel);
                 });
             }).start();
         }
@@ -101,16 +97,11 @@ public class SmartWakeActivity extends Activity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
-            KeyguardManager keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-            if (keyguardManager != null) {
-                keyguardManager.requestDismissKeyguard(this, null);
-            }
         } else {
             getWindow().addFlags(
                     WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
-                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
-                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
             );
         }
     }
@@ -267,6 +258,13 @@ public class SmartWakeActivity extends Activity {
     private void onLockScreenDismissed() {
         triggerHapticFeedback();
         SmartWakeAnalytics.logEvent(this, SmartWakeAnalytics.EVENT_DISMISS, null);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            KeyguardManager keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+            if (keyguardManager != null) {
+                keyguardManager.requestDismissKeyguard(this, null);
+            }
+        }
 
         SmartWakeListener listener = SmartWake.getListener();
         if (listener != null) {
