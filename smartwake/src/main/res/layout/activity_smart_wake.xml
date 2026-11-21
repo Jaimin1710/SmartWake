@@ -4,9 +4,9 @@
     android:id="@+id/smartwake_root_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/smartwake_bg_overlay">
+    android:background="@android:color/transparent">
 
-    <!-- ViewPager2 for Wallpapers -->
+    <!-- ViewPager2 for Wallpapers (Full Screen Mode) -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/smartwake_wallpaper_viewpager"
         android:layout_width="match_parent"
@@ -36,7 +36,7 @@
                 android:format12Hour="hh:mm a"
                 android:format24Hour="HH:mm"
                 android:textColor="@color/smartwake_text_primary"
-                android:textSize="44sp"
+                android:textSize="48sp"
                 android:textStyle="bold"
                 tools:text="10:45 AM" />
 
@@ -75,28 +75,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:minHeight="160dp"
+            android:minHeight="140dp"
             android:background="@drawable/bg_smartwake_card"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="20dp">
-
-            <!-- Card Header / Title -->
-            <TextView
-                android:id="@+id/smartwake_card_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/smartwake_default_title"
-                android:textColor="@color/smartwake_text_primary"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+            android:padding="16dp">
 
             <!-- Quotes View -->
             <TextView
                 android:id="@+id/smartwake_tv_quote"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
                 android:gravity="center"
                 android:textColor="@color/smartwake_text_primary"
                 android:textSize="15sp"
@@ -109,7 +98,7 @@
                 android:id="@+id/smartwake_tv_news_sports"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:gravity="center"
                 android:textColor="@color/smartwake_text_secondary"
                 android:textSize="13sp"
@@ -129,13 +118,13 @@
                 android:id="@+id/smartwake_btn_read_more"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:padding="8dp"
+                android:layout_marginTop="8dp"
+                android:padding="6dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:text="@string/smartwake_btn_read_more"
                 android:textColor="@color/smartwake_accent"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 

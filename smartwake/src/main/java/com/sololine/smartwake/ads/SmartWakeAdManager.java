@@ -7,6 +7,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.sololine.smartwake.R;
@@ -19,7 +21,7 @@ import java.util.List;
 
 public class SmartWakeAdManager {
 
-    private static final String TAG = "SmartWakeAdManager";
+    private static final String TAG = "SmartWake";
 
     public interface AdLoadCallback {
         void onAdLoaded(View adView);
@@ -38,11 +40,9 @@ public class SmartWakeAdManager {
             return;
         }
 
-        // Determine primary provider type based on screen-on rotation count
         int screenOnCount = SmartWakeConfig.getScreenOnCount(context);
         int primaryType = priorityList.get(screenOnCount % priorityList.size());
 
-        // Create fallback queue combining primary and adsFailPriority
         List<Integer> attemptQueue = new ArrayList<>();
         attemptQueue.add(primaryType);
 
@@ -54,19 +54,19 @@ public class SmartWakeAdManager {
             }
         }
 
-        Log.d(TAG, "Attempting ad load queue: " + attemptQueue);
+        Log.d(TAG, "AD MANAGER: Attempting ad load queue: " + attemptQueue);
         attemptNextAd(context, container, model, attemptQueue, 0, callback);
     }
 
     private static void attemptNextAd(Context context, ViewGroup container, SmartWakeRemoteModel model, List<Integer> queue, int index, AdLoadCallback callback) {
         if (index >= queue.size()) {
-            Log.d(TAG, "All ad attempts in queue failed or unavailable. Hiding ad container.");
+            Log.d(TAG, "AD MANAGER: All ad attempts in queue failed or unavailable. Hiding ad container.");
             if (callback != null) callback.onAdFailedAll();
             return;
         }
 
         int adType = queue.get(index);
-        Log.d(TAG, "Attempting ad type " + adType + " at queue index " + index);
+        Log.d(TAG, "AD MANAGER: Attempting ad type " + adType + " at queue index " + index);
 
         switch (adType) {
             case 1: // AdMob Native
@@ -114,7 +114,6 @@ public class SmartWakeAdManager {
                 break;
         }
 
-        // Try next fallback in queue
         attemptNextAd(context, container, model, queue, index + 1, callback);
     }
 
@@ -131,7 +130,7 @@ public class SmartWakeAdManager {
                 if ("onNativeAdLoaded".equals(method.getName()) && args.length > 0) {
                     Object nativeAdObj = args[0];
                     container.post(() -> {
-                        View adView = renderAdMobNativeView(context, container, nativeAdObj);
+                        View adView = buildCustomNativeAdView(context, container, null); // Fallback render
                         if (adView != null && callback != null) {
                             callback.onAdLoaded(adView);
                         } else if (callback != null) {
@@ -158,9 +157,9 @@ public class SmartWakeAdManager {
             Method loadAdMethod = adLoaderClass.getMethod("loadAd", adRequestClass);
             loadAdMethod.invoke(adLoaderObj, adRequestObj);
 
-            Log.d(TAG, "AdMob Native loadAd initiated via reflection.");
+            Log.d(TAG, "AD MANAGER: AdMob Native loadAd initiated.");
         } catch (Exception e) {
-            Log.w(TAG, "AdMob SDK reflection failed or not present: " + e.getMessage());
+            Log.w(TAG, "AD MANAGER: AdMob reflection failed: " + e.getMessage());
             if (callback != null) callback.onAdFailedAll();
         }
     }
@@ -201,9 +200,9 @@ public class SmartWakeAdManager {
             Method loadAdMethod = tpNativeClass.getMethod("loadAd");
             loadAdMethod.invoke(tpNativeObj);
 
-            Log.d(TAG, "TradPlus Facebook Native loadAd initiated via reflection.");
+            Log.d(TAG, "AD MANAGER: TradPlus Facebook Native loadAd initiated.");
         } catch (Exception e) {
-            Log.w(TAG, "TradPlus SDK reflection failed or fallback to direct FB Native: " + e.getMessage());
+            Log.w(TAG, "AD MANAGER: TradPlus reflection failed: " + e.getMessage());
             loadFacebookNative(context, container, placementId, callback);
         }
     }
@@ -216,56 +215,51 @@ public class SmartWakeAdManager {
             Method loadAdMethod = nativeAdClass.getMethod("loadAd");
             loadAdMethod.invoke(nativeAdObj);
 
-            Log.d(TAG, "Facebook Native loadAd initiated.");
+            Log.d(TAG, "AD MANAGER: Facebook Native loadAd initiated.");
             if (callback != null) callback.onAdFailedAll();
         } catch (Exception e) {
-            Log.w(TAG, "Facebook Audience Network SDK reflection failed or not present: " + e.getMessage());
+            Log.w(TAG, "AD MANAGER: Facebook SDK reflection failed: " + e.getMessage());
             if (callback != null) callback.onAdFailedAll();
-        }
-    }
-
-    private static View renderAdMobNativeView(Context context, ViewGroup container, Object nativeAdObj) {
-        try {
-            return LayoutInflater.from(context).inflate(R.layout.activity_smart_wake, container, false);
-        } catch (Exception e) {
-            return null;
         }
     }
 
     private static View buildCustomNativeAdView(Context context, ViewGroup container, SmartWakeRemoteModel model) {
-        if (model.customNativeTitle == null || model.customNativeTitle.trim().isEmpty()) {
-            return null;
-        }
+        String title = (model != null && model.customNativeTitle != null && !model.customNativeTitle.trim().isEmpty())
+                ? model.customNativeTitle : "Special Offer";
+        String desc = (model != null && model.customNativeDesc != null && !model.customNativeDesc.trim().isEmpty())
+                ? model.customNativeDesc : "Discover amazing features in our app!";
+        String cta = (model != null && model.customNativeCta != null && !model.customNativeCta.trim().isEmpty())
+                ? model.customNativeCta : "Install Now";
+        String link = (model != null) ? model.customNativeLink : "";
 
         try {
-            View adView = LayoutInflater.from(context).inflate(R.layout.activity_smart_wake, container, false);
+            View adView = LayoutInflater.from(context).inflate(R.layout.item_smart_wake_custom_ad, container, false);
 
-            TextView titleTv = adView.findViewById(R.id.smartwake_tv_quote);
-            TextView subtitleTv = adView.findViewById(R.id.smartwake_tv_news_sports);
+            TextView titleTv = adView.findViewById(R.id.smartwake_ad_title);
+            TextView descTv = adView.findViewById(R.id.smartwake_ad_desc);
+            Button ctaBtn = adView.findViewById(R.id.smartwake_ad_cta);
 
-            if (titleTv != null) {
-                titleTv.setVisibility(View.VISIBLE);
-                titleTv.setText(model.customNativeTitle);
-            }
+            if (titleTv != null) titleTv.setText(title);
+            if (descTv != null) descTv.setText(desc);
+            if (ctaBtn != null) ctaBtn.setText(cta);
 
-            if (subtitleTv != null) {
-                subtitleTv.setVisibility(View.VISIBLE);
-                subtitleTv.setText(model.customNativeDesc);
-            }
-
-            adView.setOnClickListener(v -> {
-                if (model.customNativeLink != null && !model.customNativeLink.trim().isEmpty()) {
+            View.OnClickListener clickListener = v -> {
+                if (link != null && !link.trim().isEmpty()) {
                     try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(model.customNativeLink));
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(link));
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         context.startActivity(intent);
                     } catch (Exception ignored) {
                     }
                 }
-            });
+            };
+
+            adView.setOnClickListener(clickListener);
+            if (ctaBtn != null) ctaBtn.setOnClickListener(clickListener);
 
             return adView;
         } catch (Exception e) {
+            Log.e(TAG, "AD MANAGER ERROR building custom ad view: " + e.getMessage());
             return null;
         }
     }

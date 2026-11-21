@@ -37,7 +37,7 @@ import java.util.List;
 
 public class SmartWakeActivity extends Activity {
 
-    private static final String TAG = "SmartWakeActivity";
+    private static final String TAG = "SmartWake";
 
     private ObjectAnimator bounceAnimator;
     private BroadcastReceiver unlockReceiver;
@@ -47,7 +47,6 @@ public class SmartWakeActivity extends Activity {
         setupLockScreenFlags();
         super.onCreate(savedInstanceState);
 
-        // Increment screen-on count index for ad/content rotation
         SmartWakeConfig.incrementScreenOnCount(this);
 
         setContentView(R.layout.activity_smart_wake);
@@ -55,14 +54,13 @@ public class SmartWakeActivity extends Activity {
         String apiUrl = SmartWakeConfig.getApiUrl(this);
         String jsonConfig = SmartWakeConfig.getLastConfigJson(this);
 
-        Log.d(TAG, "onCreate jsonConfig length: " + (jsonConfig != null ? jsonConfig.length() : 0) + ", apiUrl: " + apiUrl);
+        Log.d(TAG, "ACTIVITY onCreate. ApiUrl: " + apiUrl + ", jsonConfig length: " + (jsonConfig != null ? jsonConfig.length() : 0));
 
         // Render immediately using last saved config
         if (jsonConfig != null && !jsonConfig.trim().isEmpty()) {
             SmartWakeRemoteModel model = SmartWakeApiClient.parseConfigJson(jsonConfig);
             setupServerUI(model);
         } else {
-            // Render default UI fallback
             setupServerUI(new SmartWakeRemoteModel());
         }
 
@@ -110,7 +108,6 @@ public class SmartWakeActivity extends Activity {
         if (model == null) return;
 
         ViewPager2 viewPager = findViewById(R.id.smartwake_wallpaper_viewpager);
-        TextView tvCardTitle = findViewById(R.id.smartwake_card_title);
         TextView tvWeather = findViewById(R.id.smartwake_tv_weather);
         TextView tvQuote = findViewById(R.id.smartwake_tv_quote);
         TextView tvNewsSports = findViewById(R.id.smartwake_tv_news_sports);
@@ -118,9 +115,9 @@ public class SmartWakeActivity extends Activity {
         View btnReadMore = findViewById(R.id.smartwake_btn_read_more);
         View swipeIcon = findViewById(R.id.smartwake_swipe_icon);
 
-        Log.d(TAG, "setupServerUI displayMode: " + model.displayMode + ", wallpapers count: " + (model.wallpapers != null ? model.wallpapers.size() : 0));
+        Log.d(TAG, "setupServerUI displayMode: " + model.displayMode + ", showWallpapers: " + model.showWallpapers);
 
-        // 1. Display Mode: FULL_SCREEN (with Wallpapers) vs CENTER_DIALOG
+        // 1. Display Mode: FULL_SCREEN vs CENTER_DIALOG
         if ("FULL_SCREEN".equalsIgnoreCase(model.displayMode)) {
             if (viewPager != null) {
                 viewPager.setVisibility(View.VISIBLE);
@@ -157,7 +154,6 @@ public class SmartWakeActivity extends Activity {
             int count = SmartWakeConfig.getScreenOnCount(this);
             String quote = model.quotes.get(count % model.quotes.size());
             tvQuote.setText("“" + quote + "”");
-            if (tvCardTitle != null) tvCardTitle.setVisibility(View.GONE);
         }
 
         // 4. News / Sports
@@ -173,7 +169,6 @@ public class SmartWakeActivity extends Activity {
             if (sb.length() > 0) {
                 tvNewsSports.setVisibility(View.VISIBLE);
                 tvNewsSports.setText(sb.toString());
-                if (tvCardTitle != null) tvCardTitle.setVisibility(View.GONE);
             }
         }
 
