@@ -3,6 +3,7 @@ package com.sololine.smartwake.ui;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -18,6 +19,8 @@ import java.net.URL;
 import java.util.List;
 
 public class WallpaperPagerAdapter extends RecyclerView.Adapter<WallpaperPagerAdapter.WallpaperViewHolder> {
+
+    private static final String TAG = "WallpaperPagerAdapter";
 
     private final Context context;
     private final List<String> wallpaperUrls;
@@ -68,17 +71,29 @@ public class WallpaperPagerAdapter extends RecyclerView.Adapter<WallpaperPagerAd
                 try {
                     URL url = new URL(urlStr);
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(5000);
-                    conn.setReadTimeout(5000);
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Android; Mobile)");
+                    conn.setInstanceFollowRedirects(true);
+                    conn.setConnectTimeout(8000);
+                    conn.setReadTimeout(8000);
                     conn.setDoInput(true);
                     conn.connect();
 
-                    InputStream is = conn.getInputStream();
-                    Bitmap bitmap = BitmapFactory.decodeStream(is);
-                    is.close();
+                    int responseCode = conn.getResponseCode();
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        InputStream is = conn.getInputStream();
+                        Bitmap bitmap = BitmapFactory.decodeStream(is);
+                        is.close();
 
-                    imageView.post(() -> imageView.setImageBitmap(bitmap));
+                        if (bitmap != null) {
+                            imageView.post(() -> imageView.setImageBitmap(bitmap));
+                            Log.d(TAG, "Wallpaper loaded successfully from " + urlStr);
+                            return;
+                        }
+                    }
+                    Log.w(TAG, "Wallpaper HTTP failed code: " + responseCode + " for " + urlStr);
+                    imageView.post(() -> imageView.setImageResource(R.drawable.bg_smartwake_card));
                 } catch (Exception e) {
+                    Log.e(TAG, "Error loading wallpaper: " + e.getMessage());
                     imageView.post(() -> imageView.setImageResource(R.drawable.bg_smartwake_card));
                 }
             }).start();
