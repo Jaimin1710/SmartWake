@@ -10,8 +10,8 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowContentOverlay">@null</item>
         <item name="android:windowIsFloating">false</item>
-        <item name="android:backgroundDimEnabled">true</item>
-        <item name="android:backgroundDimAmount">0.3</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:backgroundDimAmount">0.0</item>
         <item name="android:showWhenLocked" tools:targetApi="o_mr1">true</item>
         <item name="android:turnScreenOn" tools:targetApi="o_mr1">true</item>
     </style>
