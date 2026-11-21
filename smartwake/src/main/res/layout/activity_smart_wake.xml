@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="@color/smartwake_bg_overlay">
 
-    <!-- ViewPager2 for Wallpapers (Hidden by default for plain dark background) -->
+    <!-- ViewPager2 for Wallpapers -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/smartwake_wallpaper_viewpager"
         android:layout_width="match_parent"
@@ -125,15 +125,17 @@
                 android:visibility="gone" />
 
             <!-- Read More Button -->
-            <com.google.android.material.button.MaterialButton
+            <TextView
                 android:id="@+id/smartwake_btn_read_more"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="10dp"
+                android:padding="8dp"
+                android:clickable="true"
+                android:focusable="true"
                 android:text="@string/smartwake_btn_read_more"
                 android:textColor="@color/smartwake_accent"
-                android:textSize="13sp"
+                android:textSize="14sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
