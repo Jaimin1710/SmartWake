@@ -8,4 +8,5 @@
     <string name="smartwake_desc_swipe_icon">Swipe indicator</string>
     <string name="smartwake_notification_title">SmartWake Active</string>
     <string name="smartwake_notification_desc">SmartWake is monitoring screen state in background.</string>
+    <string name="smartwake_btn_read_more">Read More ›</string>
 </resources>

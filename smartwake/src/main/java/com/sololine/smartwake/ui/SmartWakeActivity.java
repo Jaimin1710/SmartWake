@@ -4,53 +4,74 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.KeyguardManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
+import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.sololine.smartwake.R;
 import com.sololine.smartwake.SmartWake;
 import com.sololine.smartwake.SmartWakeConfig;
 import com.sololine.smartwake.SmartWakeListener;
+import com.sololine.smartwake.ads.SmartWakeAdManager;
+import com.sololine.smartwake.analytics.SmartWakeAnalytics;
+import com.sololine.smartwake.content.WeatherManager;
+import com.sololine.smartwake.model.SmartWakeRemoteModel;
+import com.sololine.smartwake.net.SmartWakeApiClient;
+
+import java.util.List;
 
 public class SmartWakeActivity extends Activity {
 
+    private static final String TAG = "SmartWakeActivity";
+
     private ObjectAnimator bounceAnimator;
+    private BroadcastReceiver unlockReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         setupLockScreenFlags();
         super.onCreate(savedInstanceState);
 
-        int customLayoutRes = SmartWakeConfig.getCustomLayoutResId(this);
-        if (customLayoutRes != 0) {
-            setContentView(customLayoutRes);
-        } else {
-            setContentView(R.layout.activity_smart_wake);
-            setupDefaultUI();
+        // Increment screen-on count index for ad rotation
+        SmartWakeConfig.incrementScreenOnCount(this);
+
+        // Fetch cached or remote server configuration
+        String jsonConfig = SmartWakeConfig.getLastConfigJson(this);
+        SmartWakeRemoteModel model = SmartWakeApiClient.parseConfigJson(jsonConfig);
+
+        // Check if master switch is OFF from server
+        if (!model.showLockscreen) {
+            Log.d(TAG, "Server disabled SmartWake (show_lockscreen=false). Finishing Activity.");
+            finish();
+            return;
         }
+
+        setContentView(R.layout.activity_smart_wake);
+
+        setupServerUI(model);
+        registerUnlockReceiver();
 
         View rootLayout = findViewById(R.id.smartwake_root_layout);
-        if (rootLayout == null) {
-            rootLayout = getWindow().getDecorView().findViewById(android.R.id.content);
+        if (rootLayout != null) {
+            rootLayout.setOnTouchListener(new SwipeDismissTouchListener(rootLayout, SmartWakeConfig.SWIPE_UP, view -> onLockScreenDismissed()));
         }
 
-        int direction = SmartWakeConfig.getSwipeDirection(this);
-        if (rootLayout != null) {
-            rootLayout.setOnTouchListener(new SwipeDismissTouchListener(rootLayout, direction, new SwipeDismissTouchListener.OnDismissCallback() {
-                @Override
-                public void onDismiss(View view) {
-                    onLockScreenDismissed();
-                }
-            }));
-        }
+        SmartWakeAnalytics.logEvent(this, SmartWakeAnalytics.EVENT_SHOW, null);
 
         SmartWakeListener listener = SmartWake.getListener();
         if (listener != null) {
@@ -76,43 +97,145 @@ public class SmartWakeActivity extends Activity {
         }
     }
 
-    private void setupDefaultUI() {
-        TextView titleTv = findViewById(R.id.smartwake_title);
-        TextView subtitleTv = findViewById(R.id.smartwake_subtitle);
-        ImageView iconIv = findViewById(R.id.smartwake_icon);
-        View clockContainer = findViewById(R.id.smartwake_clock_container);
+    private void setupServerUI(SmartWakeRemoteModel model) {
+        ViewPager2 viewPager = findViewById(R.id.smartwake_wallpaper_viewpager);
+        TextView tvWeather = findViewById(R.id.smartwake_tv_weather);
+        TextView tvQuote = findViewById(R.id.smartwake_tv_quote);
+        TextView tvNewsSports = findViewById(R.id.smartwake_tv_news_sports);
+        ViewGroup adContainer = findViewById(R.id.smartwake_ad_container);
+        View btnReadMore = findViewById(R.id.smartwake_btn_read_more);
         View swipeIcon = findViewById(R.id.smartwake_swipe_icon);
 
-        String customTitle = SmartWakeConfig.getTitle(this);
-        if (customTitle != null && titleTv != null) {
-            titleTv.setText(customTitle);
+        // 1. Display Mode: FULL_SCREEN (with Wallpapers) vs CENTER_DIALOG
+        if ("FULL_SCREEN".equalsIgnoreCase(model.displayMode) && model.showWallpapers && model.wallpapers != null && !model.wallpapers.isEmpty()) {
+            if (viewPager != null) {
+                viewPager.setVisibility(View.VISIBLE);
+                viewPager.setAdapter(new WallpaperPagerAdapter(this, model.wallpapers));
+            }
+        } else if (viewPager != null) {
+            viewPager.setVisibility(View.GONE);
         }
 
-        String customSubtitle = SmartWakeConfig.getSubtitle(this);
-        if (customSubtitle != null && subtitleTv != null) {
-            subtitleTv.setText(customSubtitle);
+        // 2. Weather
+        if (model.showWeather && tvWeather != null) {
+            if (model.weatherTemp != null && !model.weatherTemp.isEmpty()) {
+                tvWeather.setVisibility(View.VISIBLE);
+                tvWeather.setText(" • " + model.weatherCity + " " + model.weatherTemp);
+            } else {
+                WeatherManager.fetchWeatherAsync((temp, condition) -> runOnUiThread(() -> {
+                    if (tvWeather != null) {
+                        tvWeather.setVisibility(View.VISIBLE);
+                        tvWeather.setText(" • " + temp + " (" + condition + ")");
+                    }
+                }));
+            }
         }
 
-        int iconRes = SmartWakeConfig.getIconResId(this);
-        if (iconRes != 0 && iconIv != null) {
-            iconIv.setImageResource(iconRes);
+        // 3. Quotes
+        if (model.showQuotes && model.quotes != null && !model.quotes.isEmpty() && tvQuote != null) {
+            tvQuote.setVisibility(View.VISIBLE);
+            int count = SmartWakeConfig.getScreenOnCount(this);
+            String quote = model.quotes.get(count % model.quotes.size());
+            tvQuote.setText("“" + quote + "”");
         }
 
-        if (clockContainer != null) {
-            boolean showClock = SmartWakeConfig.isShowClock(this);
-            clockContainer.setVisibility(showClock ? View.VISIBLE : View.GONE);
+        // 4. News / Sports
+        if (tvNewsSports != null) {
+            StringBuilder sb = new StringBuilder();
+            if (model.showSports && model.sportsCricket != null && !model.sportsCricket.isEmpty()) {
+                sb.append("🏏 ").append(model.sportsCricket);
+            } else if (model.showNews && model.news != null && !model.news.isEmpty()) {
+                int count = SmartWakeConfig.getScreenOnCount(this);
+                sb.append("📰 ").append(model.news.get(count % model.news.size()));
+            }
+
+            if (sb.length() > 0) {
+                tvNewsSports.setVisibility(View.VISIBLE);
+                tvNewsSports.setText(sb.toString());
+            }
         }
 
+        // 5. Read More Redirect Button
+        if (model.readMoreLinks != null && !model.readMoreLinks.isEmpty() && btnReadMore != null) {
+            btnReadMore.setVisibility(View.VISIBLE);
+            btnReadMore.setOnClickListener(v -> {
+                SmartWakeAnalytics.logEvent(this, SmartWakeAnalytics.EVENT_READ_MORE, null);
+                openReadMoreUrl(model.readMoreLinks);
+            });
+        }
+
+        // 6. Native Ad Engine
+        if (model.showAd && adContainer != null) {
+            adContainer.setVisibility(View.VISIBLE);
+            SmartWakeAdManager.loadAndDisplayAd(this, adContainer, model, new SmartWakeAdManager.AdLoadCallback() {
+                @Override
+                public void onAdLoaded(View adView) {
+                    if (adContainer != null) adContainer.setVisibility(View.VISIBLE);
+                }
+
+                @Override
+                public void onAdFailedAll() {
+                    if (adContainer != null) adContainer.setVisibility(View.GONE);
+                }
+            });
+        }
+
+        // 7. Swipe Hint Animation
         if (swipeIcon != null) {
-            bounceAnimator = ObjectAnimator.ofFloat(swipeIcon, "translationY", 0f, -16f, 0f);
+            bounceAnimator = ObjectAnimator.ofFloat(swipeIcon, "translationY", 0f, -14f, 0f);
             bounceAnimator.setDuration(1200);
             bounceAnimator.setRepeatCount(ValueAnimator.INFINITE);
             bounceAnimator.start();
         }
     }
 
+    private void openReadMoreUrl(List<String> links) {
+        if (links == null || links.isEmpty()) return;
+
+        int index = SmartWakeConfig.getReadMoreIndex(this);
+        String url = links.get(index % links.size());
+        SmartWakeConfig.incrementReadMoreIndex(this);
+
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "Error launching Read More URL: " + e.getMessage());
+        }
+    }
+
+    private void registerUnlockReceiver() {
+        unlockReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (Intent.ACTION_USER_PRESENT.equals(intent.getAction())) {
+                    Log.d(TAG, "Phone unlocked by user (ACTION_USER_PRESENT). Dismissing Activity.");
+                    onLockScreenDismissed();
+                }
+            }
+        };
+        IntentFilter filter = new IntentFilter(Intent.ACTION_USER_PRESENT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(unlockReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(unlockReceiver, filter);
+        }
+    }
+
+    private void unregisterUnlockReceiver() {
+        if (unlockReceiver != null) {
+            try {
+                unregisterReceiver(unlockReceiver);
+            } catch (Exception ignored) {
+            }
+            unlockReceiver = null;
+        }
+    }
+
     private void onLockScreenDismissed() {
         triggerHapticFeedback();
+        SmartWakeAnalytics.logEvent(this, SmartWakeAnalytics.EVENT_DISMISS, null);
 
         SmartWakeListener listener = SmartWake.getListener();
         if (listener != null) {
@@ -151,6 +274,7 @@ public class SmartWakeActivity extends Activity {
         if (bounceAnimator != null) {
             bounceAnimator.cancel();
         }
+        unregisterUnlockReceiver();
         super.onDestroy();
     }
 }

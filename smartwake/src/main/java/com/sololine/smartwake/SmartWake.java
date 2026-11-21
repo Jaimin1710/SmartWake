@@ -7,15 +7,25 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.AudioPlaybackConfiguration;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
+import com.sololine.smartwake.model.SmartWakeRemoteModel;
+import com.sololine.smartwake.net.SmartWakeApiClient;
+
 import com.sololine.smartwake.service.SmartWakeService;
 import com.sololine.smartwake.ui.SmartWakeActivity;
+import com.sololine.smartwake.worker.SmartWakeSyncManager;
+
+import java.util.List;
 
 public class SmartWake {
 
@@ -24,10 +34,17 @@ public class SmartWake {
     private static SmartWakeListener globalListener;
 
     /**
-     * Quick 1-line initialization of SmartWake SDK.
-     * Enables SmartWake with default settings and starts background monitoring.
+     * Quick initialization of SmartWake SDK with Server API URL for 20+ Apps.
      *
      * @param context App or Activity Context
+     * @param apiUrl  Server API URL returning Base64/JSON configuration
+     */
+    public static void init(Context context, String apiUrl) {
+        new Builder(context).setApiUrl(apiUrl).start();
+    }
+
+    /**
+     * Quick initialization of SmartWake SDK with default settings.
      */
     public static void init(Context context) {
         new Builder(context).start();
@@ -91,11 +108,97 @@ public class SmartWake {
     }
 
     /**
+     * Checks whether the device is currently ringing with an incoming call or in an active phone call.
+     */
+    public static boolean isPhoneRingingOrInCall(Context context) {
+        if (context == null) return false;
+
+        try {
+            TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            if (tm != null && tm.getCallState() != TelephonyManager.CALL_STATE_IDLE) {
+                Log.d(TAG, "Device is ringing or call is in progress (TelephonyManager).");
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+
+        try {
+            AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                int mode = am.getMode();
+                if (mode == AudioManager.MODE_RINGTONE || mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_IN_COMMUNICATION) {
+                    Log.d(TAG, "Audio mode indicates incoming or active call: " + mode);
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks whether an alarm or timer is currently playing audio.
+     */
+    public static boolean isAlarmRinging(Context context) {
+        if (context == null) return false;
+        try {
+            AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    List<AudioPlaybackConfiguration> configs = am.getActivePlaybackConfigurations();
+                    if (configs != null) {
+                        for (AudioPlaybackConfiguration config : configs) {
+                            AudioAttributes attr = config.getAudioAttributes();
+                            if (attr != null) {
+                                int usage = attr.getUsage();
+                                if (usage == AudioAttributes.USAGE_ALARM || usage == AudioAttributes.USAGE_NOTIFICATION_RINGTONE) {
+                                    Log.d(TAG, "Active alarm or ringtone playback detected: " + usage);
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
+    }
+
+    /**
+     * Comprehensive check to determine if SmartWake should be skipped
+     * (e.g. Phone call active, proximity sensor screen-on, or Alarm/Timer ringing).
+     */
+    public static boolean shouldSkipLockScreen(Context context) {
+        if (context == null) return false;
+
+        if (isPhoneRingingOrInCall(context)) {
+            Log.d(TAG, "Skip SmartWake: Active call or ringing detected.");
+            return true;
+        }
+
+        if (isAlarmRinging(context)) {
+            Log.d(TAG, "Skip SmartWake: Active alarm or timer detected.");
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Launches the LockScreen Activity using FullScreenIntent & direct startActivity
      * to bypass Android 10+ Background Activity Launch Restrictions.
      */
     public static void launchLockScreen(Context context) {
         if (context == null) return;
+
+        // Skip if phone is currently ringing, in call, or alarm is active
+        if (shouldSkipLockScreen(context)) {
+            Log.d(TAG, "Skipping LockScreen launch due to active call, proximity sensor, or alarm.");
+            return;
+        }
+
         Context appContext = context.getApplicationContext();
 
         Intent intent = new Intent(appContext, SmartWakeActivity.class);
@@ -187,6 +290,7 @@ public class SmartWake {
      */
     public static class Builder {
         private final Context context;
+        private String apiUrl;
         private String title;
         private String subtitle;
         private int iconResId;
@@ -198,6 +302,11 @@ public class SmartWake {
 
         public Builder(Context context) {
             this.context = context.getApplicationContext();
+        }
+
+        public Builder setApiUrl(String apiUrl) {
+            this.apiUrl = apiUrl;
+            return this;
         }
 
         public Builder setTitle(String title) {
@@ -241,13 +350,20 @@ public class SmartWake {
         }
 
         /**
-         * Saves configuration and starts the background service.
+         * Saves configuration, fetches initial server config, and starts WorkManager background sync.
          */
         public void start() {
-            if (title != null) SmartWakeConfig.setTitle(context, title);
-            if (subtitle != null) SmartWakeConfig.setSubtitle(context, subtitle);
-            if (iconResId != 0) SmartWakeConfig.setIconResId(context, iconResId);
-            if (customLayoutResId != 0) SmartWakeConfig.setCustomLayoutResId(context, customLayoutResId);
+            if (apiUrl != null && !apiUrl.trim().isEmpty()) {
+                SmartWakeConfig.setApiUrl(context, apiUrl);
+
+                new Thread(() -> {
+                    SmartWakeRemoteModel model = SmartWakeApiClient.fetchConfigSync(context, apiUrl);
+                    if (model != null && model.workerTimeHours > 0) {
+                        SmartWakeSyncManager.schedulePeriodicSync(context, model.workerTimeHours);
+                    }
+                }).start();
+            }
+
             SmartWakeConfig.setSwipeDirection(context, swipeDirection);
             SmartWakeConfig.setShowClock(context, showClock);
             SmartWakeConfig.setVibrationEnabled(context, vibrationEnabled);

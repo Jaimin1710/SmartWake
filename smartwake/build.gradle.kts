@@ -66,6 +66,12 @@ afterEvaluate {
 dependencies {
     implementation(libs.appcompat)
     implementation(libs.material)
+    implementation("androidx.work:work-runtime:2.9.1")
+    implementation("androidx.viewpager2:viewpager2:1.1.0")
+    implementation("com.google.android.gms:play-services-ads:23.6.0")
+    implementation("com.tradplusad:tradplus:14.1.20.1")
+    implementation("com.tradplusad:tradplus-facebook:1.14.1.20.1")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.ext.junit)

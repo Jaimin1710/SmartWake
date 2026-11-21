@@ -1,18 +1,13 @@
 package com.sololine.smartwake.demo;
 
-import android.Manifest;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.material.button.MaterialButton;
@@ -24,8 +19,8 @@ import com.sololine.smartwake.SmartWakeListener;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "SmartWakeDemo";
-    private static final int REQ_NOTIFICATION_PERMISSION = 101;
     private static final int REQ_OVERLAY_PERMISSION = 102;
+    private static final String SAMPLE_API_URL = "https://example.com/smartwake_config.php";
 
     private TextView tvStatus;
     private MaterialSwitch switchSmartWake;
@@ -88,13 +83,11 @@ public class MainActivity extends AppCompatActivity {
 
         btnCustomBuilder.setOnClickListener(v -> {
             SmartWake.builder(this)
-                    .setTitle("Custom App Integration")
-                    .setSubtitle("SmartWake configured for App #1 of 20")
+                    .setApiUrl(SAMPLE_API_URL)
                     .setSwipeDirection(SmartWakeConfig.SWIPE_UP)
-                    .setShowClock(true)
                     .setVibrationEnabled(true)
                     .start();
-            Toast.makeText(this, "Custom Builder Configured & Service Started!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Custom API Server Configured & WorkManager Started!", Toast.LENGTH_SHORT).show();
             switchSmartWake.setChecked(true);
             updateStatusUI(true);
         });
@@ -107,18 +100,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(
-                        this,
-                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                        REQ_NOTIFICATION_PERMISSION
-                );
-                return;
-            }
-        }
-        SmartWake.start(this);
+        SmartWake.init(this, SAMPLE_API_URL);
         updateStatusUI(true);
     }
 
@@ -130,21 +112,6 @@ public class MainActivity extends AppCompatActivity {
                 checkPermissionAndStartService();
             } else {
                 Toast.makeText(this, "Overlay permission is required for LockScreen overlay", Toast.LENGTH_SHORT).show();
-                switchSmartWake.setChecked(false);
-                updateStatusUI(false);
-            }
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQ_NOTIFICATION_PERMISSION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                SmartWake.start(this);
-                updateStatusUI(true);
-            } else {
-                Toast.makeText(this, "Notification permission is required for background service", Toast.LENGTH_LONG).show();
                 switchSmartWake.setChecked(false);
                 updateStatusUI(false);
             }

@@ -9,6 +9,7 @@ pluginManagement {
         }
         mavenCentral()
         gradlePluginPortal()
+        maven { url = java.net.URI("https://mvn.tradplusad.com/repository/tradplus/") }
     }
 }
 plugins {
@@ -19,6 +20,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url = java.net.URI("https://mvn.tradplusad.com/repository/tradplus/") }
     }
 }
 
