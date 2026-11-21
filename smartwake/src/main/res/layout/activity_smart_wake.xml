@@ -19,13 +19,13 @@
         android:layout_height="match_parent"
         android:padding="20dp">
 
-        <!-- Clock and Weather Header -->
+        <!-- Clock and Weather Header (Top) -->
         <LinearLayout
             android:id="@+id/smartwake_clock_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentTop="true"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="28dp"
             android:gravity="center"
             android:orientation="vertical">
 
@@ -36,7 +36,7 @@
                 android:format12Hour="hh:mm a"
                 android:format24Hour="HH:mm"
                 android:textColor="@color/smartwake_text_primary"
-                android:textSize="48sp"
+                android:textSize="44sp"
                 android:textStyle="bold"
                 tools:text="10:45 AM" />
 
@@ -60,7 +60,7 @@
                     android:id="@+id/smartwake_tv_weather"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
+                    android:layout_marginStart="8dp"
                     android:textColor="@color/smartwake_accent"
                     android:textSize="14sp"
                     android:textStyle="bold"
@@ -75,19 +75,31 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
+            android:minHeight="160dp"
             android:background="@drawable/bg_smartwake_card"
             android:gravity="center"
             android:orientation="vertical"
             android:padding="20dp">
+
+            <!-- Card Header / Title -->
+            <TextView
+                android:id="@+id/smartwake_card_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/smartwake_default_title"
+                android:textColor="@color/smartwake_text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
             <!-- Quotes View -->
             <TextView
                 android:id="@+id/smartwake_tv_quote"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
                 android:gravity="center"
                 android:textColor="@color/smartwake_text_primary"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textStyle="italic"
                 android:visibility="gone"
                 tools:text="“Believe you can and you are halfway there.”" />
@@ -109,7 +121,7 @@
                 android:id="@+id/smartwake_ad_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="10dp"
                 android:visibility="gone" />
 
             <!-- Read More Button -->
@@ -119,7 +131,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Read More ›"
+                android:text="@string/smartwake_btn_read_more"
                 android:textColor="@color/smartwake_accent"
                 android:textSize="13sp"
                 android:textStyle="bold"
@@ -133,7 +145,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="20dp"
             android:gravity="center"
             android:orientation="vertical">
 

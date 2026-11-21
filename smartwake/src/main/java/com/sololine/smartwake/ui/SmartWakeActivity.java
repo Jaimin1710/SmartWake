@@ -46,7 +46,7 @@ public class SmartWakeActivity extends Activity {
         setupLockScreenFlags();
         super.onCreate(savedInstanceState);
 
-        // Increment screen-on count index for ad rotation
+        // Increment screen-on count index for ad/content rotation
         SmartWakeConfig.incrementScreenOnCount(this);
 
         setContentView(R.layout.activity_smart_wake);
@@ -56,18 +56,8 @@ public class SmartWakeActivity extends Activity {
 
         Log.d(TAG, "onCreate jsonConfig length: " + (jsonConfig != null ? jsonConfig.length() : 0) + ", apiUrl: " + apiUrl);
 
-        if ((jsonConfig == null || jsonConfig.trim().isEmpty()) && apiUrl != null && !apiUrl.trim().isEmpty()) {
-            new Thread(() -> {
-                SmartWakeRemoteModel fetchedModel = SmartWakeApiClient.fetchConfigSync(this, apiUrl);
-                runOnUiThread(() -> {
-                    if (!fetchedModel.showLockscreen) {
-                        finish();
-                        return;
-                    }
-                    setupServerUI(fetchedModel);
-                });
-            }).start();
-        } else {
+        // Render immediately using last saved config
+        if (jsonConfig != null && !jsonConfig.trim().isEmpty()) {
             SmartWakeRemoteModel model = SmartWakeApiClient.parseConfigJson(jsonConfig);
             if (!model.showLockscreen) {
                 Log.d(TAG, "Server disabled SmartWake (show_lockscreen=false). Finishing.");
@@ -75,6 +65,20 @@ public class SmartWakeActivity extends Activity {
                 return;
             }
             setupServerUI(model);
+        }
+
+        // Fetch fresh config from server asynchronously
+        if (apiUrl != null && !apiUrl.trim().isEmpty()) {
+            new Thread(() -> {
+                SmartWakeRemoteModel freshModel = SmartWakeApiClient.fetchConfigSync(this, apiUrl);
+                runOnUiThread(() -> {
+                    if (!freshModel.showLockscreen) {
+                        finish();
+                        return;
+                    }
+                    setupServerUI(freshModel);
+                });
+            }).start();
         }
 
         registerUnlockReceiver();
@@ -111,7 +115,10 @@ public class SmartWakeActivity extends Activity {
     }
 
     private void setupServerUI(SmartWakeRemoteModel model) {
+        if (model == null) return;
+
         ViewPager2 viewPager = findViewById(R.id.smartwake_wallpaper_viewpager);
+        TextView tvCardTitle = findViewById(R.id.smartwake_card_title);
         TextView tvWeather = findViewById(R.id.smartwake_tv_weather);
         TextView tvQuote = findViewById(R.id.smartwake_tv_quote);
         TextView tvNewsSports = findViewById(R.id.smartwake_tv_news_sports);
@@ -150,6 +157,7 @@ public class SmartWakeActivity extends Activity {
             int count = SmartWakeConfig.getScreenOnCount(this);
             String quote = model.quotes.get(count % model.quotes.size());
             tvQuote.setText("“" + quote + "”");
+            if (tvCardTitle != null) tvCardTitle.setVisibility(View.GONE);
         }
 
         // 4. News / Sports
@@ -165,6 +173,7 @@ public class SmartWakeActivity extends Activity {
             if (sb.length() > 0) {
                 tvNewsSports.setVisibility(View.VISIBLE);
                 tvNewsSports.setText(sb.toString());
+                if (tvCardTitle != null) tvCardTitle.setVisibility(View.GONE);
             }
         }
 
