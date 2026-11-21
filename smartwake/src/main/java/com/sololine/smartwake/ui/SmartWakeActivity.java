@@ -108,17 +108,24 @@ public class SmartWakeActivity extends Activity {
         if (model == null) return;
 
         ViewPager2 viewPager = findViewById(R.id.smartwake_wallpaper_viewpager);
+        View clockContainer = findViewById(R.id.smartwake_clock_container);
         TextView tvWeather = findViewById(R.id.smartwake_tv_weather);
         TextView tvQuote = findViewById(R.id.smartwake_tv_quote);
         TextView tvNewsSports = findViewById(R.id.smartwake_tv_news_sports);
         ViewGroup adContainer = findViewById(R.id.smartwake_ad_container);
         View btnReadMore = findViewById(R.id.smartwake_btn_read_more);
+        View swipeHintContainer = findViewById(R.id.smartwake_swipe_hint_container);
         View swipeIcon = findViewById(R.id.smartwake_swipe_icon);
 
-        Log.d(TAG, "setupServerUI displayMode: " + model.displayMode + ", showWallpapers: " + model.showWallpapers);
+        boolean isFullScreen = "FULL_SCREEN".equalsIgnoreCase(model.displayMode);
+        Log.d(TAG, "setupServerUI displayMode: " + model.displayMode + ", isFullScreen: " + isFullScreen);
 
-        // 1. Display Mode: FULL_SCREEN vs CENTER_DIALOG
-        if ("FULL_SCREEN".equalsIgnoreCase(model.displayMode)) {
+        // 1. Display Mode Rules
+        if (isFullScreen) {
+            // FULL_SCREEN: Show ViewPager2 Wallpapers + Top Clock + Bottom Swipe Hint
+            if (clockContainer != null) clockContainer.setVisibility(View.VISIBLE);
+            if (swipeHintContainer != null) swipeHintContainer.setVisibility(View.VISIBLE);
+
             if (viewPager != null) {
                 viewPager.setVisibility(View.VISIBLE);
                 List<String> urls = model.wallpapers;
@@ -129,12 +136,15 @@ public class SmartWakeActivity extends Activity {
                 }
                 viewPager.setAdapter(new WallpaperPagerAdapter(this, urls));
             }
-        } else if (viewPager != null) {
-            viewPager.setVisibility(View.GONE);
+        } else {
+            // CENTER_DIALOG: Hide Clock, Date, Wallpaper & Bottom Hint! Show ONLY floating middle card!
+            if (clockContainer != null) clockContainer.setVisibility(View.GONE);
+            if (swipeHintContainer != null) swipeHintContainer.setVisibility(View.GONE);
+            if (viewPager != null) viewPager.setVisibility(View.GONE);
         }
 
-        // 2. Weather
-        if (model.showWeather && tvWeather != null) {
+        // 2. Weather (Full Screen Mode)
+        if (isFullScreen && model.showWeather && tvWeather != null) {
             if (model.weatherTemp != null && !model.weatherTemp.isEmpty()) {
                 tvWeather.setVisibility(View.VISIBLE);
                 tvWeather.setText(" • " + model.weatherCity + " " + model.weatherTemp);
@@ -146,6 +156,8 @@ public class SmartWakeActivity extends Activity {
                     }
                 }));
             }
+        } else if (tvWeather != null) {
+            tvWeather.setVisibility(View.GONE);
         }
 
         // 3. Quotes
@@ -178,6 +190,7 @@ public class SmartWakeActivity extends Activity {
             btnReadMore.setOnClickListener(v -> {
                 SmartWakeAnalytics.logEvent(this, SmartWakeAnalytics.EVENT_READ_MORE, null);
                 openReadMoreUrl(model.readMoreLinks);
+                onLockScreenDismissed(); // Dismiss lockscreen on click
             });
         }
 
@@ -194,11 +207,17 @@ public class SmartWakeActivity extends Activity {
                 public void onAdFailedAll() {
                     if (adContainer != null) adContainer.setVisibility(View.GONE);
                 }
+
+                @Override
+                public void onAdClicked() {
+                    SmartWakeAnalytics.logEvent(SmartWakeActivity.this, SmartWakeAnalytics.EVENT_AD_CLICK, null);
+                    onLockScreenDismissed(); // Dismiss lockscreen on ad click
+                }
             });
         }
 
-        // 7. Swipe Hint Animation
-        if (swipeIcon != null) {
+        // 7. Swipe Hint Animation (Full Screen Mode)
+        if (isFullScreen && swipeIcon != null) {
             bounceAnimator = ObjectAnimator.ofFloat(swipeIcon, "translationY", 0f, -14f, 0f);
             bounceAnimator.setDuration(1200);
             bounceAnimator.setRepeatCount(ValueAnimator.INFINITE);

@@ -17,15 +17,16 @@
     <application
         android:usesCleartextTraffic="true">
 
-        <!-- Default Fallback AdMob App ID to prevent crashes when host apps lack App ID -->
+        <!-- Default Fallback AdMob App ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-3940256099942544~3347511713" />
 
-        <!-- Lock Screen Activity -->
+        <!-- Single Instance Lock Screen Activity -->
         <activity
             android:name=".ui.SmartWakeActivity"
             android:exported="false"
+            android:launchMode="singleInstance"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:theme="@style/Theme.SmartWake.LockScreen"

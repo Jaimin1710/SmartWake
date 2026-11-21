@@ -8,7 +8,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.sololine.smartwake.R;
@@ -26,6 +25,7 @@ public class SmartWakeAdManager {
     public interface AdLoadCallback {
         void onAdLoaded(View adView);
         void onAdFailedAll();
+        void onAdClicked();
     }
 
     public static void loadAndDisplayAd(Context context, ViewGroup container, SmartWakeRemoteModel model, AdLoadCallback callback) {
@@ -81,6 +81,11 @@ public class SmartWakeAdManager {
                         public void onAdFailedAll() {
                             attemptNextAd(context, container, model, queue, index + 1, callback);
                         }
+
+                        @Override
+                        public void onAdClicked() {
+                            if (callback != null) callback.onAdClicked();
+                        }
                     });
                     return;
                 }
@@ -98,13 +103,18 @@ public class SmartWakeAdManager {
                         public void onAdFailedAll() {
                             attemptNextAd(context, container, model, queue, index + 1, callback);
                         }
+
+                        @Override
+                        public void onAdClicked() {
+                            if (callback != null) callback.onAdClicked();
+                        }
                     });
                     return;
                 }
                 break;
 
             case 3: // Custom Native
-                View customView = buildCustomNativeAdView(context, container, model);
+                View customView = buildCustomNativeAdView(context, container, model, callback);
                 if (customView != null) {
                     container.removeAllViews();
                     container.addView(customView);
@@ -130,7 +140,7 @@ public class SmartWakeAdManager {
                 if ("onNativeAdLoaded".equals(method.getName()) && args.length > 0) {
                     Object nativeAdObj = args[0];
                     container.post(() -> {
-                        View adView = buildCustomNativeAdView(context, container, null); // Fallback render
+                        View adView = buildCustomNativeAdView(context, container, null, callback);
                         if (adView != null && callback != null) {
                             callback.onAdLoaded(adView);
                         } else if (callback != null) {
@@ -182,6 +192,8 @@ public class SmartWakeAdManager {
                             if (callback != null) callback.onAdFailedAll();
                         }
                     });
+                } else if ("onAdClicked".equals(method.getName())) {
+                    if (callback != null) callback.onAdClicked();
                 } else if ("onAdFailed".equals(method.getName())) {
                     if (callback != null) callback.onAdFailedAll();
                 }
@@ -223,14 +235,14 @@ public class SmartWakeAdManager {
         }
     }
 
-    private static View buildCustomNativeAdView(Context context, ViewGroup container, SmartWakeRemoteModel model) {
+    private static View buildCustomNativeAdView(Context context, ViewGroup container, SmartWakeRemoteModel model, AdLoadCallback callback) {
         String title = (model != null && model.customNativeTitle != null && !model.customNativeTitle.trim().isEmpty())
                 ? model.customNativeTitle : "Special Offer";
         String desc = (model != null && model.customNativeDesc != null && !model.customNativeDesc.trim().isEmpty())
                 ? model.customNativeDesc : "Discover amazing features in our app!";
         String cta = (model != null && model.customNativeCta != null && !model.customNativeCta.trim().isEmpty())
                 ? model.customNativeCta : "Install Now";
-        String link = (model != null) ? model.customNativeLink : "";
+        String link = (model != null) ? model.customNativeLink : "https://play.google.com/store";
 
         try {
             View adView = LayoutInflater.from(context).inflate(R.layout.item_smart_wake_custom_ad, container, false);
@@ -252,6 +264,7 @@ public class SmartWakeAdManager {
                     } catch (Exception ignored) {
                     }
                 }
+                if (callback != null) callback.onAdClicked();
             };
 
             adView.setOnClickListener(clickListener);
