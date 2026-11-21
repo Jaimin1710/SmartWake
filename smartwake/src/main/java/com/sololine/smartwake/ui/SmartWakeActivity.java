@@ -8,16 +8,19 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.hardware.camera2.CameraManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.viewpager2.widget.ViewPager2;
@@ -41,6 +44,7 @@ public class SmartWakeActivity extends Activity {
 
     private ObjectAnimator bounceAnimator;
     private BroadcastReceiver unlockReceiver;
+    private boolean isTorchOn = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -114,6 +118,8 @@ public class SmartWakeActivity extends Activity {
         TextView tvNewsSports = findViewById(R.id.smartwake_tv_news_sports);
         ViewGroup adContainer = findViewById(R.id.smartwake_ad_container);
         View btnReadMore = findViewById(R.id.smartwake_btn_read_more);
+        View btnFlashlight = findViewById(R.id.smartwake_btn_flashlight);
+        View btnCamera = findViewById(R.id.smartwake_btn_camera);
         View swipeHintContainer = findViewById(R.id.smartwake_swipe_hint_container);
         View swipeIcon = findViewById(R.id.smartwake_swipe_icon);
 
@@ -121,11 +127,9 @@ public class SmartWakeActivity extends Activity {
         Log.d(TAG, "setupServerUI displayMode: " + model.displayMode + ", isFullScreen: " + isFullScreen);
 
         // 1. Display Mode Rules
-        if (isFullScreen) {
-            // FULL_SCREEN: Show ViewPager2 Wallpapers + Top Clock + Bottom Swipe Hint
-            if (clockContainer != null) clockContainer.setVisibility(View.VISIBLE);
-            if (swipeHintContainer != null) swipeHintContainer.setVisibility(View.VISIBLE);
+        if (clockContainer != null) clockContainer.setVisibility(View.VISIBLE);
 
+        if (isFullScreen) {
             if (viewPager != null) {
                 viewPager.setVisibility(View.VISIBLE);
                 List<String> urls = model.wallpapers;
@@ -136,15 +140,21 @@ public class SmartWakeActivity extends Activity {
                 }
                 viewPager.setAdapter(new WallpaperPagerAdapter(this, urls));
             }
-        } else {
-            // CENTER_DIALOG: Hide Clock, Date, Wallpaper & Bottom Hint! Show ONLY floating middle card!
-            if (clockContainer != null) clockContainer.setVisibility(View.GONE);
-            if (swipeHintContainer != null) swipeHintContainer.setVisibility(View.GONE);
-            if (viewPager != null) viewPager.setVisibility(View.GONE);
+        } else if (viewPager != null) {
+            viewPager.setVisibility(View.GONE);
         }
 
-        // 2. Weather (Full Screen Mode)
-        if (isFullScreen && model.showWeather && tvWeather != null) {
+        // 2. Flashlight & Camera Shortcuts
+        if (btnFlashlight != null) {
+            btnFlashlight.setOnClickListener(v -> toggleFlashlight());
+        }
+
+        if (btnCamera != null) {
+            btnCamera.setOnClickListener(v -> launchCamera());
+        }
+
+        // 3. Weather
+        if (model.showWeather && tvWeather != null) {
             if (model.weatherTemp != null && !model.weatherTemp.isEmpty()) {
                 tvWeather.setVisibility(View.VISIBLE);
                 tvWeather.setText(" • " + model.weatherCity + " " + model.weatherTemp);
@@ -160,7 +170,7 @@ public class SmartWakeActivity extends Activity {
             tvWeather.setVisibility(View.GONE);
         }
 
-        // 3. Quotes
+        // 4. Quotes
         if (model.showQuotes && model.quotes != null && !model.quotes.isEmpty() && tvQuote != null) {
             tvQuote.setVisibility(View.VISIBLE);
             int count = SmartWakeConfig.getScreenOnCount(this);
@@ -168,7 +178,7 @@ public class SmartWakeActivity extends Activity {
             tvQuote.setText("“" + quote + "”");
         }
 
-        // 4. News / Sports
+        // 5. News / Sports
         if (tvNewsSports != null) {
             StringBuilder sb = new StringBuilder();
             if (model.showSports && model.sportsCricket != null && !model.sportsCricket.isEmpty()) {
@@ -184,17 +194,17 @@ public class SmartWakeActivity extends Activity {
             }
         }
 
-        // 5. Read More Redirect Button
+        // 6. Read More Redirect Button
         if (model.readMoreLinks != null && !model.readMoreLinks.isEmpty() && btnReadMore != null) {
             btnReadMore.setVisibility(View.VISIBLE);
             btnReadMore.setOnClickListener(v -> {
                 SmartWakeAnalytics.logEvent(this, SmartWakeAnalytics.EVENT_READ_MORE, null);
                 openReadMoreUrl(model.readMoreLinks);
-                onLockScreenDismissed(); // Dismiss lockscreen on click
+                onLockScreenDismissed();
             });
         }
 
-        // 6. Native Ad Engine
+        // 7. Native Ad Engine
         if (model.showAd && adContainer != null) {
             adContainer.setVisibility(View.VISIBLE);
             SmartWakeAdManager.loadAndDisplayAd(this, adContainer, model, new SmartWakeAdManager.AdLoadCallback() {
@@ -211,17 +221,43 @@ public class SmartWakeActivity extends Activity {
                 @Override
                 public void onAdClicked() {
                     SmartWakeAnalytics.logEvent(SmartWakeActivity.this, SmartWakeAnalytics.EVENT_AD_CLICK, null);
-                    onLockScreenDismissed(); // Dismiss lockscreen on ad click
+                    onLockScreenDismissed();
                 }
             });
         }
 
-        // 7. Swipe Hint Animation (Full Screen Mode)
-        if (isFullScreen && swipeIcon != null) {
+        // 8. Swipe Hint Animation
+        if (swipeIcon != null) {
             bounceAnimator = ObjectAnimator.ofFloat(swipeIcon, "translationY", 0f, -14f, 0f);
             bounceAnimator.setDuration(1200);
             bounceAnimator.setRepeatCount(ValueAnimator.INFINITE);
             bounceAnimator.start();
+        }
+    }
+
+    private void toggleFlashlight() {
+        try {
+            triggerHapticFeedback();
+            CameraManager cm = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+            if (cm != null) {
+                String cameraId = cm.getCameraIdList()[0];
+                isTorchOn = !isTorchOn;
+                cm.setTorchMode(cameraId, isTorchOn);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error toggling flashlight: " + e.getMessage());
+        }
+    }
+
+    private void launchCamera() {
+        try {
+            triggerHapticFeedback();
+            Intent intent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            onLockScreenDismissed();
+        } catch (Exception e) {
+            Log.e(TAG, "Error launching camera: " + e.getMessage());
         }
     }
 

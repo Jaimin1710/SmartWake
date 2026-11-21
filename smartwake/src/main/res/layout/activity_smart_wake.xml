@@ -130,20 +130,51 @@
 
         </LinearLayout>
 
-        <!-- Bottom Swipe Indicator -->
+        <!-- Bottom Flashlight Shortcut (Bottom Left) -->
+        <ImageView
+            android:id="@+id/smartwake_btn_flashlight"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentStart="true"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/bg_smartwake_shortcut"
+            android:clickable="true"
+            android:contentDescription="Flashlight"
+            android:focusable="true"
+            android:padding="12dp"
+            android:src="@drawable/ic_smartwake_flashlight" />
+
+        <!-- Bottom Camera Shortcut (Bottom Right) -->
+        <ImageView
+            android:id="@+id/smartwake_btn_camera"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/bg_smartwake_shortcut"
+            android:clickable="true"
+            android:contentDescription="Camera"
+            android:focusable="true"
+            android:padding="12dp"
+            android:src="@drawable/ic_smartwake_camera" />
+
+        <!-- Bottom Swipe Indicator (Center Bottom) -->
         <LinearLayout
             android:id="@+id/smartwake_swipe_hint_container"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
-            android:layout_marginBottom="20dp"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="12dp"
             android:gravity="center"
             android:orientation="vertical">
 
             <ImageView
                 android:id="@+id/smartwake_swipe_icon"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:contentDescription="@string/smartwake_desc_swipe_icon"
                 android:src="@drawable/ic_smartwake_swipe_up" />
 
@@ -151,10 +182,10 @@
                 android:id="@+id/smartwake_swipe_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="2dp"
                 android:text="@string/smartwake_swipe_hint"
                 android:textColor="@color/smartwake_text_secondary"
-                android:textSize="13sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
