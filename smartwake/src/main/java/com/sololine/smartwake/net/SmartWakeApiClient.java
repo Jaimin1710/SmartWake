@@ -1,8 +1,11 @@
 package com.sololine.smartwake.net;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Base64;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.sololine.smartwake.SmartWakeConfig;
 import com.sololine.smartwake.model.SmartWakeRemoteModel;
@@ -28,6 +31,7 @@ public class SmartWakeApiClient {
             URL url = new URL(apiUrl);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Android; Mobile)");
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
 
@@ -56,6 +60,15 @@ public class SmartWakeApiClient {
 
                 Log.d(TAG, "Fetched remote config successfully: " + jsonText);
                 SmartWakeConfig.setLastConfigJson(context, jsonText);
+
+                // Show Toast Notification on UI thread for developer feedback
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    try {
+                        Toast.makeText(context.getApplicationContext(), "SmartWake API Config Fetched!", Toast.LENGTH_SHORT).show();
+                    } catch (Exception ignored) {
+                    }
+                });
+
                 return parseConfigJson(jsonText);
             }
         } catch (Exception e) {

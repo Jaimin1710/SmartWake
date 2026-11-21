@@ -144,19 +144,14 @@ public class SmartWake {
         if (context == null) return false;
         try {
             AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            if (am != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    List<AudioPlaybackConfiguration> configs = am.getActivePlaybackConfigurations();
-                    if (configs != null) {
-                        for (AudioPlaybackConfiguration config : configs) {
-                            AudioAttributes attr = config.getAudioAttributes();
-                            if (attr != null) {
-                                int usage = attr.getUsage();
-                                if (usage == AudioAttributes.USAGE_ALARM || usage == AudioAttributes.USAGE_NOTIFICATION_RINGTONE) {
-                                    Log.d(TAG, "Active alarm or ringtone playback detected: " + usage);
-                                    return true;
-                                }
-                            }
+            if (am != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                List<AudioPlaybackConfiguration> configs = am.getActivePlaybackConfigurations();
+                if (configs != null) {
+                    for (AudioPlaybackConfiguration config : configs) {
+                        AudioAttributes attr = config.getAudioAttributes();
+                        if (attr != null && attr.getUsage() == AudioAttributes.USAGE_ALARM) {
+                            Log.d(TAG, "Active alarm playback detected.");
+                            return true;
                         }
                     }
                 }
@@ -179,7 +174,7 @@ public class SmartWake {
         }
 
         if (isAlarmRinging(context)) {
-            Log.d(TAG, "Skip SmartWake: Active alarm or timer detected.");
+            Log.d(TAG, "Skip SmartWake: Active alarm detected.");
             return true;
         }
 
