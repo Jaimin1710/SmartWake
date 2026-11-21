@@ -23,17 +23,15 @@ import com.sololine.smartwake.worker.SmartWakeSyncManager;
 
 public class SmartWake {
 
-    private static final String TAG = "SmartWake";
+    public static final String TAG = "SmartWake";
     private static final String FULL_SCREEN_CHANNEL_ID = "smartwake_fullscreen_channel";
     private static SmartWakeListener globalListener;
 
     /**
      * Quick initialization of SmartWake SDK with Server API URL for 20+ Apps.
-     *
-     * @param context App or Activity Context
-     * @param apiUrl  Server API URL returning Base64/JSON configuration
      */
     public static void init(Context context, String apiUrl) {
+        Log.d(TAG, "INIT called with apiUrl: " + apiUrl);
         new Builder(context).setApiUrl(apiUrl).start();
     }
 
@@ -41,14 +39,12 @@ public class SmartWake {
      * Quick initialization of SmartWake SDK with default settings.
      */
     public static void init(Context context) {
+        Log.d(TAG, "INIT called with default settings.");
         new Builder(context).start();
     }
 
     /**
      * Obtains a Builder to configure SmartWake options.
-     *
-     * @param context Context
-     * @return Builder instance
      */
     public static Builder builder(Context context) {
         return new Builder(context);
@@ -70,9 +66,9 @@ public class SmartWake {
             } else {
                 appContext.startService(serviceIntent);
             }
-            Log.d(TAG, "SmartWake background service started successfully.");
+            Log.d(TAG, "START: SmartWake background service launched successfully.");
         } catch (Exception e) {
-            Log.e(TAG, "Failed to start SmartWake service", e);
+            Log.e(TAG, "START ERROR: Failed to start SmartWake service", e);
         }
     }
 
@@ -88,9 +84,9 @@ public class SmartWake {
         Intent serviceIntent = new Intent(appContext, SmartWakeService.class);
         try {
             appContext.stopService(serviceIntent);
-            Log.d(TAG, "SmartWake background service stopped.");
+            Log.d(TAG, "STOP: SmartWake background service stopped.");
         } catch (Exception e) {
-            Log.e(TAG, "Failed to stop SmartWake service", e);
+            Log.e(TAG, "STOP ERROR: Failed to stop SmartWake service", e);
         }
     }
 
@@ -108,6 +104,7 @@ public class SmartWake {
     public static void launchLockScreen(Context context) {
         if (context == null) return;
 
+        Log.d(TAG, "LAUNCH LOCKSCREEN: Triggering SmartWakeActivity...");
         Context appContext = context.getApplicationContext();
 
         Intent intent = new Intent(appContext, SmartWakeActivity.class);
@@ -150,8 +147,9 @@ public class SmartWake {
 
         try {
             appContext.startActivity(intent);
+            Log.d(TAG, "LAUNCH LOCKSCREEN: startActivity executed.");
         } catch (Exception e) {
-            Log.w(TAG, "Direct startActivity from background handled by FullScreenIntent: " + e.getMessage());
+            Log.w(TAG, "LAUNCH LOCKSCREEN: Direct startActivity failed (handled by FullScreenIntent): " + e.getMessage());
         }
     }
 
@@ -159,6 +157,7 @@ public class SmartWake {
      * Manually triggers and shows the SmartWake lock screen activity immediately.
      */
     public static void showNow(Context context) {
+        Log.d(TAG, "SHOW NOW called.");
         launchLockScreen(context);
     }
 
@@ -262,10 +261,12 @@ public class SmartWake {
          * Saves configuration, fetches initial server config, and starts WorkManager background sync.
          */
         public void start() {
+            Log.d(TAG, "BUILDER START called. ApiUrl: " + apiUrl);
             if (apiUrl != null && !apiUrl.trim().isEmpty()) {
                 SmartWakeConfig.setApiUrl(context, apiUrl);
 
                 new Thread(() -> {
+                    Log.d(TAG, "BUILDER THREAD: Fetching initial config from " + apiUrl);
                     SmartWakeRemoteModel model = SmartWakeApiClient.fetchConfigSync(context, apiUrl);
                     if (model != null && model.workerTimeHours > 0) {
                         SmartWakeSyncManager.schedulePeriodicSync(context, model.workerTimeHours);

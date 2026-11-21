@@ -11,25 +11,27 @@ import com.sololine.smartwake.SmartWakeConfig;
 
 public class SmartWakeReceiver extends BroadcastReceiver {
 
-    private static final String TAG = "SmartWakeReceiver";
+    private static final String TAG = "SmartWake";
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null || intent.getAction() == null) return;
 
         String action = intent.getAction();
-        Log.d(TAG, "Received broadcast action: " + action);
+        Log.d(TAG, "RECEIVER onReceive action: " + action);
 
         if (Intent.ACTION_SCREEN_ON.equals(action)) {
             if (SmartWakeConfig.isEnabled(context)) {
                 // Only skip if phone is actively ringing with an incoming call
                 if (isPhoneRinging(context)) {
-                    Log.d(TAG, "Phone is actively ringing with incoming call. Skipping LockScreen.");
+                    Log.d(TAG, "RECEIVER: Phone is actively ringing with incoming call. Skipping LockScreen.");
                     return;
                 }
 
-                Log.d(TAG, "Screen-On detected. Launching SmartWake Activity immediately.");
+                Log.d(TAG, "RECEIVER: Screen-On detected! Triggering SmartWake.showNow(context)...");
                 SmartWake.showNow(context);
+            } else {
+                Log.d(TAG, "RECEIVER: SmartWake is disabled in config. Ignoring ACTION_SCREEN_ON.");
             }
         }
     }

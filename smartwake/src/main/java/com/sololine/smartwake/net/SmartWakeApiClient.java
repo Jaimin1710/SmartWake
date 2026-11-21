@@ -20,10 +20,12 @@ import java.net.URL;
 
 public class SmartWakeApiClient {
 
-    private static final String TAG = "SmartWakeApiClient";
+    private static final String TAG = "SmartWake";
 
     public static SmartWakeRemoteModel fetchConfigSync(Context context, String apiUrl) {
+        Log.d(TAG, "API CLIENT fetchConfigSync called. URL: " + apiUrl);
         if (apiUrl == null || apiUrl.trim().isEmpty()) {
+            Log.d(TAG, "API CLIENT: URL is empty. Returning cached config.");
             return parseConfigJson(SmartWakeConfig.getLastConfigJson(context));
         }
 
@@ -36,6 +38,8 @@ public class SmartWakeApiClient {
             conn.setReadTimeout(10000);
 
             int responseCode = conn.getResponseCode();
+            Log.d(TAG, "API CLIENT HTTP response code: " + responseCode);
+
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 StringBuilder response = new StringBuilder();
@@ -58,10 +62,10 @@ public class SmartWakeApiClient {
                 } catch (Exception ignored) {
                 }
 
-                Log.d(TAG, "Fetched remote config successfully: " + jsonText);
+                Log.d(TAG, "API CLIENT decoded JSON: " + jsonText);
                 SmartWakeConfig.setLastConfigJson(context, jsonText);
 
-                // Show Toast Notification on UI thread for developer feedback
+                // Toast feedback for developer
                 new Handler(Looper.getMainLooper()).post(() -> {
                     try {
                         Toast.makeText(context.getApplicationContext(), "SmartWake API Config Fetched!", Toast.LENGTH_SHORT).show();
@@ -72,7 +76,7 @@ public class SmartWakeApiClient {
                 return parseConfigJson(jsonText);
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error fetching remote config from API: " + e.getMessage());
+            Log.e(TAG, "API CLIENT ERROR: " + e.getMessage(), e);
         }
 
         // Offline fallback: parse cached config
@@ -174,8 +178,9 @@ public class SmartWakeApiClient {
                 }
             }
 
+            Log.d(TAG, "API CLIENT parseConfigJson DONE: displayMode=" + model.displayMode + ", showLockscreen=" + model.showLockscreen);
         } catch (Exception e) {
-            Log.e(TAG, "Error parsing remote config JSON: " + e.getMessage());
+            Log.e(TAG, "API CLIENT ERROR parsing JSON: " + e.getMessage());
         }
 
         return model;

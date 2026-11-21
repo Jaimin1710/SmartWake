@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="@color/smartwake_bg_overlay">
 
-    <!-- ViewPager2 for Horizontal Wallpaper Scrolling -->
+    <!-- ViewPager2 for Wallpapers (Hidden by default for plain dark background) -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/smartwake_wallpaper_viewpager"
         android:layout_width="match_parent"

@@ -21,7 +21,7 @@ import com.sololine.smartwake.receiver.SmartWakeReceiver;
 
 public class SmartWakeService extends Service {
 
-    private static final String TAG = "SmartWakeService";
+    private static final String TAG = "SmartWake";
     private static final String CHANNEL_ID = "smartwake_service_channel";
     private static final int NOTIFICATION_ID = 9901;
 
@@ -31,23 +31,23 @@ public class SmartWakeService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.d(TAG, "SmartWakeService onCreate");
+        Log.d(TAG, "SERVICE onCreate executed.");
 
         registerScreenReceiver();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d(TAG, "SmartWakeService onStartCommand");
+        Log.d(TAG, "SERVICE onStartCommand executed.");
 
-        // Try foreground notification safely if permitted, otherwise run as background service seamlessly
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
                 createNotificationChannel();
                 Notification notification = createNotification();
                 startForeground(NOTIFICATION_ID, notification);
+                Log.d(TAG, "SERVICE startForeground notification active.");
             } catch (Exception e) {
-                Log.w(TAG, "Could not start foreground notification (Running in standard background mode): " + e.getMessage());
+                Log.w(TAG, "SERVICE startForeground notification skipped: " + e.getMessage());
             }
         }
 
@@ -73,7 +73,7 @@ public class SmartWakeService extends Service {
                 registerReceiver(screenReceiver, filter);
             }
             isRegistered = true;
-            Log.d(TAG, "Screen-On Receiver registered successfully.");
+            Log.d(TAG, "SERVICE: Dynamic ScreenReceiver (ACTION_SCREEN_ON) registered.");
         }
     }
 
@@ -82,10 +82,10 @@ public class SmartWakeService extends Service {
             try {
                 unregisterReceiver(screenReceiver);
             } catch (Exception e) {
-                Log.e(TAG, "Error unregistering receiver", e);
+                Log.e(TAG, "SERVICE: Error unregistering receiver", e);
             }
             isRegistered = false;
-            Log.d(TAG, "Screen-On Receiver unregistered.");
+            Log.d(TAG, "SERVICE: Dynamic ScreenReceiver unregistered.");
         }
     }
 
@@ -138,7 +138,7 @@ public class SmartWakeService extends Service {
         if (listener != null) {
             listener.onServiceStopped();
         }
-        Log.d(TAG, "SmartWakeService onDestroy");
+        Log.d(TAG, "SERVICE onDestroy executed.");
         super.onDestroy();
     }
 }
