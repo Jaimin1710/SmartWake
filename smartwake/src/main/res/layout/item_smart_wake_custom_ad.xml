@@ -3,62 +3,104 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@android:color/transparent"
+    android:background="@drawable/bg_smartwake_card"
     android:orientation="vertical"
-    android:padding="8dp">
+    android:padding="14dp">
 
+    <!-- Top Row: Icon + Title/Description -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
+        <!-- Left Square Icon / Image -->
         <ImageView
             android:id="@+id/smartwake_ad_icon"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:contentDescription="@string/smartwake_desc_icon"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:scaleType="centerCrop"
+            android:contentDescription="@string/smartwake_app_name"
             android:src="@drawable/ic_smartwake_lock" />
 
+        <!-- Right Content Column -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
+            android:layout_marginStart="12dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
+            <!-- Title / Headline -->
             <TextView
                 android:id="@+id/smartwake_ad_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:textColor="@color/smartwake_text_primary"
-                android:textSize="14sp"
+                android:textSize="15sp"
                 android:textStyle="bold"
-                tools:text="Special Offer" />
+                tools:text="Adobe Creative Cloud Photo..." />
 
+            <!-- Description -->
             <TextView
                 android:id="@+id/smartwake_ad_desc"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="3dp"
                 android:ellipsize="end"
                 android:maxLines="2"
                 android:textColor="@color/smartwake_text_secondary"
                 android:textSize="12sp"
-                tools:text="Discover amazing features in our app!" />
+                tools:text="The Adobe Creative Cloud Photography Plan Is A Comprehensive Software..." />
+
+            <!-- Ad Badge & Rating Row -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="#3B82F6"
+                    android:paddingStart="5dp"
+                    android:paddingTop="1dp"
+                    android:paddingEnd="5dp"
+                    android:paddingBottom="1dp"
+                    android:text="Ad"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="★★★★★"
+                    android:textColor="#F59E0B"
+                    android:textSize="11sp" />
+
+            </LinearLayout>
+
         </LinearLayout>
 
     </LinearLayout>
 
-    <com.google.android.material.button.MaterialButton
+    <!-- Bottom Full Width CTA Button -->
+    <TextView
         android:id="@+id/smartwake_ad_cta"
-        style="@style/Widget.MaterialComponents.Button"
         android:layout_width="match_parent"
-        android:layout_height="38dp"
-        android:layout_marginTop="10dp"
-        android:text="@string/smartwake_app_name"
+        android:layout_height="40dp"
+        android:layout_marginTop="12dp"
+        android:background="#0F172A"
+        android:gravity="center"
+        android:text="Install Now"
         android:textColor="#FFFFFF"
-        android:textSize="13sp"
+        android:textSize="14sp"
         android:textStyle="bold" />
 
 </LinearLayout>
