@@ -20,7 +20,12 @@ import java.util.List;
 public class SmartWakeAdManager {
 
     private static final String TAG = "SmartWake";
+
     private static Object cachedAdMobNativeAd = null;
+    private static Object cachedTradPlusNativeAd = null;
+
+    private static boolean isAdMobLoading = false;
+    private static boolean isTradPlusLoading = false;
 
     public interface AdLoadCallback {
         void onAdLoaded(View adView);
@@ -37,23 +42,87 @@ public class SmartWakeAdManager {
         }
     }
 
+    private static boolean isTradPlusAvailable() {
+        try {
+            Class.forName("com.tradplus.ads.open.nativead.TPNative");
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * Preloads ads in background memory so they are instantly ready for the next screen-on event.
+     */
     public static void preloadAds(Context context, SmartWakeRemoteModel model) {
         if (context == null || model == null || !model.showAd) return;
-        if (cachedAdMobNativeAd != null) return; // Already cached
 
+        // 1. Preload AdMob Native Ad if not already cached and not currently loading
         if (model.admobNative != null && !model.admobNative.trim().isEmpty() && isAdMobAvailable()) {
-            AdMobHelper.loadNativeAd(context, model.admobNative, new AdMobHelper.AdMobCallback() {
-                @Override
-                public void onSuccess(com.google.android.gms.ads.nativead.NativeAd nativeAd) {
-                    cachedAdMobNativeAd = nativeAd;
-                    Log.d(TAG, "AD MANAGER: Preloaded AdMob Native Ad successfully into memory cache!");
-                }
+            if (cachedAdMobNativeAd == null && !isAdMobLoading) {
+                isAdMobLoading = true;
+                Log.d(TAG, "AD MANAGER: Preloading AdMob Native Ad in background...");
+                AdMobHelper.loadNativeAd(context, model.admobNative, new AdMobHelper.AdMobCallback() {
+                    @Override
+                    public void onSuccess(com.google.android.gms.ads.nativead.NativeAd nativeAd) {
+                        cachedAdMobNativeAd = nativeAd;
+                        isAdMobLoading = false;
+                        Log.d(TAG, "AD MANAGER: Preloaded AdMob Native Ad successfully into memory cache!");
+                    }
 
-                @Override
-                public void onFailure(String reason) {
-                    Log.w(TAG, "AD MANAGER: Preload AdMob Native Ad failed: " + reason);
+                    @Override
+                    public void onFailure(String reason) {
+                        isAdMobLoading = false;
+                        Log.w(TAG, "AD MANAGER: Preload AdMob Native Ad failed: " + reason);
+                    }
+                });
+            }
+        }
+
+        // 2. Preload TradPlus / Facebook Native Ad if not already cached and not currently loading
+        if (model.fbNative != null && !model.fbNative.trim().isEmpty() && isTradPlusAvailable()) {
+            if (cachedTradPlusNativeAd == null && !isTradPlusLoading) {
+                isTradPlusLoading = true;
+                Log.d(TAG, "AD MANAGER: Preloading TradPlus/Facebook Native Ad in background...");
+                preloadTradPlusFacebookNative(context, model.fbNative);
+            }
+        }
+    }
+
+    private static void preloadTradPlusFacebookNative(Context context, String placementId) {
+        try {
+            Class<?> tpNativeClass = Class.forName("com.tradplus.ads.open.nativead.TPNative");
+            Object tpNativeObj = tpNativeClass.getConstructor(Context.class, String.class).newInstance(context, placementId);
+
+            Class<?> listenerClass = Class.forName("com.tradplus.ads.open.nativead.TPNativeAdListener");
+
+            java.lang.reflect.InvocationHandler handler = (proxy, method, args) -> {
+                if ("onAdLoaded".equals(method.getName())) {
+                    cachedTradPlusNativeAd = tpNativeObj;
+                    isTradPlusLoading = false;
+                    Log.d(TAG, "AD MANAGER: Preloaded TradPlus Facebook Native Ad into memory cache!");
+                } else if ("onAdFailed".equals(method.getName())) {
+                    isTradPlusLoading = false;
+                    Log.w(TAG, "AD MANAGER: Preload TradPlus Facebook Native Ad failed.");
                 }
-            });
+                return null;
+            };
+
+            Object listenerProxy = java.lang.reflect.Proxy.newProxyInstance(
+                    listenerClass.getClassLoader(),
+                    new Class<?>[]{listenerClass},
+                    handler
+            );
+
+            Method setAdListenerMethod = tpNativeClass.getMethod("setAdListener", listenerClass);
+            setAdListenerMethod.invoke(tpNativeObj, listenerProxy);
+
+            Method loadAdMethod = tpNativeClass.getMethod("loadAd");
+            loadAdMethod.invoke(tpNativeObj);
+
+        } catch (Throwable e) {
+            isTradPlusLoading = false;
+            Log.w(TAG, "AD MANAGER: Preload TradPlus reflection failed: " + e.getMessage());
         }
     }
 
@@ -61,22 +130,6 @@ public class SmartWakeAdManager {
         if (container == null || model == null || !model.showAd) {
             if (callback != null) callback.onAdFailedAll();
             return;
-        }
-
-        // 1. Check if we have a preloaded AdMob Native Ad in memory cache
-        if (cachedAdMobNativeAd instanceof com.google.android.gms.ads.nativead.NativeAd && isAdMobAvailable()) {
-            Log.d(TAG, "AD MANAGER: Displaying preloaded AdMob Native Ad instantly from memory cache!");
-            com.google.android.gms.ads.nativead.NativeAd nativeAd = (com.google.android.gms.ads.nativead.NativeAd) cachedAdMobNativeAd;
-            cachedAdMobNativeAd = null; // Consume cache
-            View renderedView = AdMobHelper.renderNativeAdView(context, container, nativeAd);
-            if (renderedView != null) {
-                container.removeAllViews();
-                container.addView(renderedView);
-                if (callback != null) callback.onAdLoaded(renderedView);
-                // Trigger background preloading for next screen-on event
-                preloadAds(context, model);
-                return;
-            }
         }
 
         List<Integer> priorityList = model.adsPriority;
@@ -88,6 +141,50 @@ public class SmartWakeAdManager {
         int screenOnCount = SmartWakeConfig.getScreenOnCount(context);
         int primaryType = priorityList.get(screenOnCount % priorityList.size());
 
+        Log.d(TAG, "AD MANAGER: LockScreen triggered. Primary ad type expected: " + primaryType);
+
+        // --- CHECK MEMORY CACHE FIRST FOR INSTANT DISPLAY ---
+
+        // Check AdMob preloaded cache
+        if (primaryType == 1 && cachedAdMobNativeAd instanceof com.google.android.gms.ads.nativead.NativeAd && isAdMobAvailable()) {
+            Log.d(TAG, "AD MANAGER: Displaying preloaded AdMob Native Ad instantly from memory cache!");
+            com.google.android.gms.ads.nativead.NativeAd nativeAd = (com.google.android.gms.ads.nativead.NativeAd) cachedAdMobNativeAd;
+            cachedAdMobNativeAd = null; // Consume cache so next screen-on gets a new ad
+
+            View renderedView = AdMobHelper.renderNativeAdView(context, container, nativeAd);
+            if (renderedView != null) {
+                container.removeAllViews();
+                container.addView(renderedView);
+                if (callback != null) callback.onAdLoaded(renderedView);
+
+                // Immediately trigger background preloading for the NEXT screen-on event!
+                preloadAds(context, model);
+                return;
+            }
+        }
+
+        // Check TradPlus / Facebook preloaded cache
+        if (primaryType == 2 && cachedTradPlusNativeAd != null && isTradPlusAvailable()) {
+            Log.d(TAG, "AD MANAGER: Displaying preloaded TradPlus/Facebook Native Ad instantly from memory cache!");
+            Object tpNativeObj = cachedTradPlusNativeAd;
+            cachedTradPlusNativeAd = null; // Consume cache
+
+            try {
+                Class<?> tpNativeClass = Class.forName("com.tradplus.ads.open.nativead.TPNative");
+                Method showAdMethod = tpNativeClass.getMethod("showAd", ViewGroup.class);
+                container.removeAllViews();
+                showAdMethod.invoke(tpNativeObj, container);
+                if (callback != null) callback.onAdLoaded(container);
+
+                // Immediately trigger background preloading for the NEXT screen-on event!
+                preloadAds(context, model);
+                return;
+            } catch (Throwable e) {
+                Log.w(TAG, "AD MANAGER: Error displaying preloaded TradPlus ad: " + e.getMessage());
+            }
+        }
+
+        // Fallback or Live Loading Queue
         List<Integer> attemptQueue = new ArrayList<>();
         attemptQueue.add(primaryType);
 
@@ -99,7 +196,7 @@ public class SmartWakeAdManager {
             }
         }
 
-        Log.d(TAG, "AD MANAGER: Attempting ad load queue: " + attemptQueue);
+        Log.d(TAG, "AD MANAGER: Cache missed or unconsumed. Attempting live load queue: " + attemptQueue);
         attemptNextAd(context, container, model, attemptQueue, 0, callback);
     }
 
@@ -107,6 +204,8 @@ public class SmartWakeAdManager {
         if (index >= queue.size()) {
             Log.d(TAG, "AD MANAGER: All ad attempts in queue failed or unavailable. Hiding ad container.");
             if (callback != null) callback.onAdFailedAll();
+            // Still trigger preload attempt in background
+            preloadAds(context, model);
             return;
         }
 
@@ -127,6 +226,9 @@ public class SmartWakeAdManager {
                                 container.removeAllViews();
                                 container.addView(adView);
                                 if (callback != null) callback.onAdLoaded(adView);
+
+                                // Trigger preloading for NEXT screen-on event!
+                                preloadAds(context, model);
                             } else {
                                 attemptNextAd(context, container, model, queue, index + 1, callback);
                             }
@@ -149,6 +251,8 @@ public class SmartWakeAdManager {
                         @Override
                         public void onAdLoaded(View adView) {
                             if (callback != null) callback.onAdLoaded(adView);
+                            // Trigger preloading for NEXT screen-on event!
+                            preloadAds(context, model);
                         }
 
                         @Override
@@ -171,6 +275,9 @@ public class SmartWakeAdManager {
                     container.removeAllViews();
                     container.addView(customView);
                     if (callback != null) callback.onAdLoaded(customView);
+
+                    // Trigger preloading for NEXT screen-on event!
+                    preloadAds(context, model);
                     return;
                 }
                 break;

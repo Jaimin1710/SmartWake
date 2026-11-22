@@ -494,6 +494,17 @@ public class SmartWakeActivity extends Activity {
             bounceAnimator.cancel();
         }
         unregisterUnlockReceiver();
+
+        // Immediately trigger background preloading for the next screen-on event!
+        try {
+            String cachedJson = SmartWakeConfig.getLastConfigJson(this);
+            if (cachedJson != null && !cachedJson.trim().isEmpty()) {
+                SmartWakeRemoteModel model = SmartWakeApiClient.parseConfigJson(cachedJson);
+                SmartWakeAdManager.preloadAds(this, model);
+            }
+        } catch (Exception ignored) {
+        }
+
         super.onDestroy();
     }
 }

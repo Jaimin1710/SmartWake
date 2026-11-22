@@ -268,8 +268,12 @@ public class SmartWake {
                 new Thread(() -> {
                     Log.d(TAG, "BUILDER THREAD: Fetching initial config from " + apiUrl);
                     SmartWakeRemoteModel model = SmartWakeApiClient.fetchConfigSync(context, apiUrl);
-                    if (model != null && model.workerTimeHours > 0) {
-                        SmartWakeSyncManager.schedulePeriodicSync(context, model.workerTimeHours);
+                    if (model != null) {
+                        if (model.workerTimeHours > 0) {
+                            SmartWakeSyncManager.schedulePeriodicSync(context, model.workerTimeHours);
+                        }
+                        // Preload initial ad into background memory!
+                        com.sololine.smartwake.ads.SmartWakeAdManager.preloadAds(context, model);
                     }
                 }).start();
             }
