@@ -7,7 +7,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -178,7 +177,6 @@ public class SmartWakeAdManager {
             Class<?> adLoaderBuilderClass = Class.forName("com.google.android.gms.ads.AdLoader$Builder");
             Class<?> nativeAdLoadedListenerClass = Class.forName("com.google.android.gms.ads.nativead.NativeAd$OnNativeAdLoadedListener");
             Class<?> adListenerClass = Class.forName("com.google.android.gms.ads.AdListener");
-            Class<?> loadAdErrorClass = Class.forName("com.google.android.gms.ads.LoadAdError");
             Class<?> adRequestClass = Class.forName("com.google.android.gms.ads.AdRequest");
 
             Object builder = adLoaderBuilderClass.getConstructor(Context.class, String.class).newInstance(context, adUnitId);
@@ -254,7 +252,7 @@ public class SmartWakeAdManager {
             TextView titleTv = adLayout.findViewById(R.id.smartwake_ad_title);
             TextView descTv = adLayout.findViewById(R.id.smartwake_ad_desc);
             ImageView iconIv = adLayout.findViewById(R.id.smartwake_ad_icon);
-            Button ctaBtn = adLayout.findViewById(R.id.smartwake_ad_cta);
+            TextView ctaBtn = adLayout.findViewById(R.id.smartwake_ad_cta);
 
             // Extract NativeAd fields reflectively
             Method getHeadlineMethod = nativeAdClass.getMethod("getHeadline");
@@ -381,7 +379,7 @@ public class SmartWakeAdManager {
 
             TextView titleTv = adView.findViewById(R.id.smartwake_ad_title);
             TextView descTv = adView.findViewById(R.id.smartwake_ad_desc);
-            Button ctaBtn = adView.findViewById(R.id.smartwake_ad_cta);
+            TextView ctaBtn = adView.findViewById(R.id.smartwake_ad_cta);
 
             if (titleTv != null) titleTv.setText(title);
             if (descTv != null) descTv.setText(desc);
