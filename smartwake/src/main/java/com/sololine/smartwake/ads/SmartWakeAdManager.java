@@ -173,6 +173,13 @@ public class SmartWakeAdManager {
 
     private static void loadAdMobNativeObj(Context context, String adUnitId, AdMobRawCallback callback) {
         try {
+            try {
+                Class<?> mobileAdsClass = Class.forName("com.google.android.gms.ads.MobileAds");
+                Method initMethod = mobileAdsClass.getMethod("initialize", Context.class);
+                initMethod.invoke(null, context.getApplicationContext());
+            } catch (Throwable ignored) {
+            }
+
             Class<?> adLoaderClass = Class.forName("com.google.android.gms.ads.AdLoader");
             Class<?> adLoaderBuilderClass = Class.forName("com.google.android.gms.ads.AdLoader$Builder");
             Class<?> nativeAdLoadedListenerClass = Class.forName("com.google.android.gms.ads.nativead.NativeAd$OnNativeAdLoadedListener");
@@ -203,7 +210,11 @@ public class SmartWakeAdManager {
             // Reflectively set AdListener for load errors
             java.lang.reflect.InvocationHandler listenerHandler = (proxy, method, args) -> {
                 if ("onAdFailedToLoad".equals(method.getName())) {
-                    Log.w(TAG, "AD MANAGER: AdMob Native onAdFailedToLoad.");
+                    if (args != null && args.length > 0) {
+                        Log.w(TAG, "AD MANAGER: AdMob Native onAdFailedToLoad error: " + args[0]);
+                    } else {
+                        Log.w(TAG, "AD MANAGER: AdMob Native onAdFailedToLoad.");
+                    }
                     if (callback != null) callback.onFailure();
                 }
                 return null;
@@ -226,8 +237,8 @@ public class SmartWakeAdManager {
             loadAdMethod.invoke(adLoaderObj, adRequestObj);
 
             Log.d(TAG, "AD MANAGER: AdMob Native loadAd requested for ID: " + adUnitId);
-        } catch (Exception e) {
-            Log.w(TAG, "AD MANAGER: AdMob reflection failed: " + e.getMessage());
+        } catch (Throwable e) {
+            Log.e(TAG, "AD MANAGER: AdMob reflection failed: " + e.getClass().getName() + " - " + e.getMessage(), e);
             if (callback != null) callback.onFailure();
         }
     }
@@ -297,7 +308,7 @@ public class SmartWakeAdManager {
 
             Log.d(TAG, "AD MANAGER: AdMob NativeAdView rendered & bound successfully!");
             return nativeAdView;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.e(TAG, "AD MANAGER ERROR rendering AdMob NativeView: " + e.getMessage(), e);
             return buildCustomNativeAdView(context, container, null, callback);
         }
@@ -342,7 +353,7 @@ public class SmartWakeAdManager {
             loadAdMethod.invoke(tpNativeObj);
 
             Log.d(TAG, "AD MANAGER: TradPlus Facebook Native loadAd initiated.");
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.w(TAG, "AD MANAGER: TradPlus reflection failed: " + e.getMessage());
             loadFacebookNative(context, container, placementId, callback);
         }
@@ -358,7 +369,7 @@ public class SmartWakeAdManager {
 
             Log.d(TAG, "AD MANAGER: Facebook Native loadAd initiated.");
             if (callback != null) callback.onAdFailedAll();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.w(TAG, "AD MANAGER: Facebook SDK reflection failed: " + e.getMessage());
             if (callback != null) callback.onAdFailedAll();
         }
@@ -401,7 +412,7 @@ public class SmartWakeAdManager {
             if (ctaBtn != null) ctaBtn.setOnClickListener(clickListener);
 
             return adView;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.e(TAG, "AD MANAGER ERROR building custom ad view: " + e.getMessage());
             return null;
         }
