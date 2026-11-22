@@ -12,6 +12,8 @@ import android.hardware.camera2.CameraManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
@@ -47,6 +49,8 @@ public class SmartWakeActivity extends Activity {
     private ObjectAnimator bounceAnimator;
     private BroadcastReceiver unlockReceiver;
     private boolean isTorchOn = false;
+    private Handler keyguardHandler = new Handler(Looper.getMainLooper());
+    private Runnable keyguardCheckRunnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +88,7 @@ public class SmartWakeActivity extends Activity {
         }
 
         registerUnlockReceiver();
+        startKeyguardUnlockMonitor();
 
         View rootLayout = findViewById(R.id.smartwake_root_layout);
         if (rootLayout != null) {
@@ -111,10 +116,30 @@ public class SmartWakeActivity extends Activity {
         }
     }
 
+    private void startKeyguardUnlockMonitor() {
+        keyguardCheckRunnable = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+                    if (km != null && !km.isKeyguardLocked()) {
+                        Log.d(TAG, "FaceUnlock or Fingerprint unlocked device! Dismissing SmartWake Activity immediately.");
+                        onLockScreenDismissed();
+                        return;
+                    }
+                } catch (Exception ignored) {
+                }
+                keyguardHandler.postDelayed(this, 300); // Check every 300ms for instant face/fingerprint unlock
+            }
+        };
+        keyguardHandler.postDelayed(keyguardCheckRunnable, 300);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
         hideSystemNavigationBar();
+        checkInstantUnlock();
     }
 
     @Override
@@ -122,6 +147,19 @@ public class SmartWakeActivity extends Activity {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             hideSystemNavigationBar();
+        } else {
+            checkInstantUnlock();
+        }
+    }
+
+    private void checkInstantUnlock() {
+        try {
+            KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+            if (km != null && !km.isKeyguardLocked()) {
+                Log.d(TAG, "Instant check: Keyguard unlocked! Closing Activity.");
+                onLockScreenDismissed();
+            }
+        } catch (Exception ignored) {
         }
     }
 
@@ -402,6 +440,9 @@ public class SmartWakeActivity extends Activity {
     }
 
     private void onLockScreenDismissed() {
+        if (keyguardHandler != null && keyguardCheckRunnable != null) {
+            keyguardHandler.removeCallbacks(keyguardCheckRunnable);
+        }
         triggerHapticFeedback();
         SmartWakeAnalytics.logEvent(this, SmartWakeAnalytics.EVENT_DISMISS, null);
 
@@ -446,6 +487,9 @@ public class SmartWakeActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (keyguardHandler != null && keyguardCheckRunnable != null) {
+            keyguardHandler.removeCallbacks(keyguardCheckRunnable);
+        }
         if (bounceAnimator != null) {
             bounceAnimator.cancel();
         }
