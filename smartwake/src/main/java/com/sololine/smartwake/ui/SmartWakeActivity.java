@@ -22,6 +22,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.viewpager2.widget.ViewPager2;
 
@@ -118,18 +119,20 @@ public class SmartWakeActivity extends Activity {
         TextView tvNewsSports = findViewById(R.id.smartwake_tv_news_sports);
         ViewGroup adContainer = findViewById(R.id.smartwake_ad_container);
         View btnReadMore = findViewById(R.id.smartwake_btn_read_more);
-        View btnFlashlight = findViewById(R.id.smartwake_btn_flashlight);
-        View btnCamera = findViewById(R.id.smartwake_btn_camera);
+        ImageView btnFlashlight = findViewById(R.id.smartwake_btn_flashlight);
+        ImageView btnCamera = findViewById(R.id.smartwake_btn_camera);
         View swipeHintContainer = findViewById(R.id.smartwake_swipe_hint_container);
         View swipeIcon = findViewById(R.id.smartwake_swipe_icon);
 
         boolean isFullScreen = "FULL_SCREEN".equalsIgnoreCase(model.displayMode);
         Log.d(TAG, "setupServerUI displayMode: " + model.displayMode + ", isFullScreen: " + isFullScreen);
 
-        // 1. Display Mode Rules
+        // 1. Clock Container
         if (clockContainer != null) clockContainer.setVisibility(View.VISIBLE);
 
+        // 2. Display Mode Rules
         if (isFullScreen) {
+            if (swipeHintContainer != null) swipeHintContainer.setVisibility(View.VISIBLE);
             if (viewPager != null) {
                 viewPager.setVisibility(View.VISIBLE);
                 List<String> urls = model.wallpapers;
@@ -140,20 +143,30 @@ public class SmartWakeActivity extends Activity {
                 }
                 viewPager.setAdapter(new WallpaperPagerAdapter(this, urls));
             }
-        } else if (viewPager != null) {
-            viewPager.setVisibility(View.GONE);
+        } else {
+            // CENTER_DIALOG Mode: Hide ViewPager2 & Hide Bottom Swipe Hint so bottom navigation/fingerprint area stays clean!
+            if (viewPager != null) viewPager.setVisibility(View.GONE);
+            if (swipeHintContainer != null) swipeHintContainer.setVisibility(View.GONE);
         }
 
-        // 2. Flashlight & Camera Shortcuts
+        // 3. Flashlight & Camera Shortcuts (Long Press Handlers)
         if (btnFlashlight != null) {
-            btnFlashlight.setOnClickListener(v -> toggleFlashlight());
+            btnFlashlight.setOnClickListener(v -> Toast.makeText(this, "Long press to toggle Flashlight", Toast.LENGTH_SHORT).show());
+            btnFlashlight.setOnLongClickListener(v -> {
+                toggleFlashlight(btnFlashlight);
+                return true;
+            });
         }
 
         if (btnCamera != null) {
-            btnCamera.setOnClickListener(v -> launchCamera());
+            btnCamera.setOnClickListener(v -> Toast.makeText(this, "Long press to open Camera", Toast.LENGTH_SHORT).show());
+            btnCamera.setOnLongClickListener(v -> {
+                launchCamera();
+                return true;
+            });
         }
 
-        // 3. Weather
+        // 4. Weather
         if (model.showWeather && tvWeather != null) {
             if (model.weatherTemp != null && !model.weatherTemp.isEmpty()) {
                 tvWeather.setVisibility(View.VISIBLE);
@@ -170,7 +183,7 @@ public class SmartWakeActivity extends Activity {
             tvWeather.setVisibility(View.GONE);
         }
 
-        // 4. Quotes
+        // 5. Quotes
         if (model.showQuotes && model.quotes != null && !model.quotes.isEmpty() && tvQuote != null) {
             tvQuote.setVisibility(View.VISIBLE);
             int count = SmartWakeConfig.getScreenOnCount(this);
@@ -178,7 +191,7 @@ public class SmartWakeActivity extends Activity {
             tvQuote.setText("“" + quote + "”");
         }
 
-        // 5. News / Sports
+        // 6. News / Sports
         if (tvNewsSports != null) {
             StringBuilder sb = new StringBuilder();
             if (model.showSports && model.sportsCricket != null && !model.sportsCricket.isEmpty()) {
@@ -194,7 +207,7 @@ public class SmartWakeActivity extends Activity {
             }
         }
 
-        // 6. Read More Redirect Button
+        // 7. Read More Redirect Button
         if (model.readMoreLinks != null && !model.readMoreLinks.isEmpty() && btnReadMore != null) {
             btnReadMore.setVisibility(View.VISIBLE);
             btnReadMore.setOnClickListener(v -> {
@@ -204,7 +217,7 @@ public class SmartWakeActivity extends Activity {
             });
         }
 
-        // 7. Native Ad Engine
+        // 8. Native Ad Engine
         if (model.showAd && adContainer != null) {
             adContainer.setVisibility(View.VISIBLE);
             SmartWakeAdManager.loadAndDisplayAd(this, adContainer, model, new SmartWakeAdManager.AdLoadCallback() {
@@ -226,8 +239,8 @@ public class SmartWakeActivity extends Activity {
             });
         }
 
-        // 8. Swipe Hint Animation
-        if (swipeIcon != null) {
+        // 9. Swipe Hint Animation (Full Screen Mode)
+        if (isFullScreen && swipeIcon != null) {
             bounceAnimator = ObjectAnimator.ofFloat(swipeIcon, "translationY", 0f, -14f, 0f);
             bounceAnimator.setDuration(1200);
             bounceAnimator.setRepeatCount(ValueAnimator.INFINITE);
@@ -235,7 +248,7 @@ public class SmartWakeActivity extends Activity {
         }
     }
 
-    private void toggleFlashlight() {
+    private void toggleFlashlight(ImageView btnFlashlight) {
         try {
             triggerHapticFeedback();
             CameraManager cm = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
@@ -243,6 +256,14 @@ public class SmartWakeActivity extends Activity {
                 String cameraId = cm.getCameraIdList()[0];
                 isTorchOn = !isTorchOn;
                 cm.setTorchMode(cameraId, isTorchOn);
+
+                if (btnFlashlight != null) {
+                    if (isTorchOn) {
+                        btnFlashlight.setBackgroundResource(R.drawable.bg_smartwake_shortcut_active);
+                    } else {
+                        btnFlashlight.setBackgroundResource(R.drawable.bg_smartwake_shortcut);
+                    }
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error toggling flashlight: " + e.getMessage());
