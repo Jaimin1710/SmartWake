@@ -88,6 +88,7 @@ public class SmartWakeActivity extends Activity {
         View rootLayout = findViewById(R.id.smartwake_root_layout);
         if (rootLayout != null) {
             rootLayout.setOnTouchListener(new SwipeDismissTouchListener(rootLayout, SmartWakeConfig.SWIPE_UP, view -> onLockScreenDismissed()));
+            rootLayout.setOnClickListener(v -> triggerFingerprintKeyguardPrompt());
         }
 
         SmartWakeAnalytics.logEvent(this, SmartWakeAnalytics.EVENT_SHOW, null);
@@ -95,6 +96,18 @@ public class SmartWakeActivity extends Activity {
         SmartWakeListener listener = SmartWake.getListener();
         if (listener != null) {
             listener.onScreenOn();
+        }
+    }
+
+    private void triggerFingerprintKeyguardPrompt() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            try {
+                KeyguardManager keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+                if (keyguardManager != null) {
+                    keyguardManager.requestDismissKeyguard(this, null);
+                }
+            } catch (Exception ignored) {
+            }
         }
     }
 
@@ -164,12 +177,12 @@ public class SmartWakeActivity extends Activity {
         boolean isFullScreen = "FULL_SCREEN".equalsIgnoreCase(model.displayMode);
         Log.d(TAG, "setupServerUI displayMode: " + model.displayMode + ", isFullScreen: " + isFullScreen);
 
-        // 1. Clock Container ALWAYS visible
+        // 1. Clock Container & Bottom Swipe Hint ALWAYS VISIBLE
         if (clockContainer != null) clockContainer.setVisibility(View.VISIBLE);
+        if (swipeHintContainer != null) swipeHintContainer.setVisibility(View.VISIBLE);
 
         // 2. Display Mode Rules
         if (isFullScreen) {
-            if (swipeHintContainer != null) swipeHintContainer.setVisibility(View.VISIBLE);
             if (viewPager != null) {
                 viewPager.setVisibility(View.VISIBLE);
                 List<String> urls = model.wallpapers;
@@ -180,10 +193,8 @@ public class SmartWakeActivity extends Activity {
                 }
                 viewPager.setAdapter(new WallpaperPagerAdapter(this, urls));
             }
-        } else {
-            // CENTER_DIALOG Mode: Hide ViewPager2 & Hide Bottom Swipe Hint so bottom area stays clean for fingerprint
-            if (viewPager != null) viewPager.setVisibility(View.GONE);
-            if (swipeHintContainer != null) swipeHintContainer.setVisibility(View.GONE);
+        } else if (viewPager != null) {
+            viewPager.setVisibility(View.GONE);
         }
 
         // 3. Flashlight & Camera Shortcuts
@@ -268,8 +279,8 @@ public class SmartWakeActivity extends Activity {
             });
         }
 
-        // 9. Swipe Hint Animation (Full Screen Mode)
-        if (isFullScreen && swipeIcon != null) {
+        // 9. Swipe Hint Animation
+        if (swipeIcon != null) {
             bounceAnimator = ObjectAnimator.ofFloat(swipeIcon, "translationY", 0f, -14f, 0f);
             bounceAnimator.setDuration(1200);
             bounceAnimator.setRepeatCount(ValueAnimator.INFINITE);
