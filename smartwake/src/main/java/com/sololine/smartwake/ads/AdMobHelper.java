@@ -26,6 +26,7 @@ public class AdMobHelper {
     public interface AdMobCallback {
         void onSuccess(NativeAd nativeAd);
         void onFailure(String reason);
+        void onAdClicked();
     }
 
     public static void loadNativeAd(Context context, String adUnitId, AdMobCallback callback) {
@@ -41,6 +42,13 @@ public class AdMobHelper {
                         if (callback != null) callback.onSuccess(nativeAd);
                     })
                     .withAdListener(new AdListener() {
+                        @Override
+                        public void onAdClicked() {
+                            Log.d(TAG, "ADMOB HELPER: onAdClicked fired!");
+                            SmartWakeAdManager.notifyAdClicked();
+                            if (callback != null) callback.onAdClicked();
+                        }
+
                         @Override
                         public void onAdFailedToLoad(LoadAdError loadAdError) {
                             String err = (loadAdError != null) ? loadAdError.getMessage() : "Unknown error";

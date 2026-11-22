@@ -27,10 +27,19 @@ public class SmartWakeAdManager {
     private static boolean isAdMobLoading = false;
     private static boolean isTradPlusLoading = false;
 
+    private static AdLoadCallback activeAdCallback = null;
+
     public interface AdLoadCallback {
         void onAdLoaded(View adView);
         void onAdFailedAll();
         void onAdClicked();
+    }
+
+    public static void notifyAdClicked() {
+        if (activeAdCallback != null) {
+            Log.d(TAG, "AD MANAGER: notifyAdClicked triggered! Notifying active listener to dismiss lockscreen.");
+            activeAdCallback.onAdClicked();
+        }
     }
 
     private static boolean isAdMobAvailable() {
@@ -75,6 +84,11 @@ public class SmartWakeAdManager {
                         isAdMobLoading = false;
                         Log.w(TAG, "AD MANAGER: Preload AdMob Native Ad failed: " + reason);
                     }
+
+                    @Override
+                    public void onAdClicked() {
+                        notifyAdClicked();
+                    }
                 });
             }
         }
@@ -101,6 +115,8 @@ public class SmartWakeAdManager {
                     cachedTradPlusNativeAd = tpNativeObj;
                     isTradPlusLoading = false;
                     Log.d(TAG, "AD MANAGER: Preloaded TradPlus Facebook Native Ad into memory cache!");
+                } else if ("onAdClicked".equals(method.getName())) {
+                    notifyAdClicked();
                 } else if ("onAdFailed".equals(method.getName())) {
                     isTradPlusLoading = false;
                     Log.w(TAG, "AD MANAGER: Preload TradPlus Facebook Native Ad failed.");
@@ -131,6 +147,8 @@ public class SmartWakeAdManager {
             if (callback != null) callback.onAdFailedAll();
             return;
         }
+
+        activeAdCallback = callback;
 
         List<Integer> priorityList = model.adsPriority;
         if (priorityList == null || priorityList.isEmpty()) {
@@ -238,6 +256,11 @@ public class SmartWakeAdManager {
                         public void onFailure(String reason) {
                             attemptNextAd(context, container, model, queue, index + 1, callback);
                         }
+
+                        @Override
+                        public void onAdClicked() {
+                            notifyAdClicked();
+                        }
                     });
                     return;
                 } else {
@@ -262,7 +285,7 @@ public class SmartWakeAdManager {
 
                         @Override
                         public void onAdClicked() {
-                            if (callback != null) callback.onAdClicked();
+                            notifyAdClicked();
                         }
                     });
                     return;
@@ -305,7 +328,7 @@ public class SmartWakeAdManager {
                         }
                     });
                 } else if ("onAdClicked".equals(method.getName())) {
-                    if (callback != null) callback.onAdClicked();
+                    notifyAdClicked();
                 } else if ("onAdFailed".equals(method.getName())) {
                     if (callback != null) callback.onAdFailedAll();
                 }
@@ -377,7 +400,7 @@ public class SmartWakeAdManager {
                     } catch (Exception ignored) {
                     }
                 }
-                if (callback != null) callback.onAdClicked();
+                notifyAdClicked();
             };
 
             adView.setOnClickListener(clickListener);
