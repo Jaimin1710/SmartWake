@@ -7,7 +7,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.sololine.smartwake.R;
@@ -29,21 +28,30 @@ public class SmartWakeAdManager {
         void onAdClicked();
     }
 
+    private static boolean isAdMobAvailable() {
+        try {
+            Class.forName("com.google.android.gms.ads.AdLoader");
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public static void preloadAds(Context context, SmartWakeRemoteModel model) {
         if (context == null || model == null || !model.showAd) return;
         if (cachedAdMobNativeAd != null) return; // Already cached
 
-        if (model.admobNative != null && !model.admobNative.trim().isEmpty()) {
-            loadAdMobNativeObj(context, model.admobNative, new AdMobRawCallback() {
+        if (model.admobNative != null && !model.admobNative.trim().isEmpty() && isAdMobAvailable()) {
+            AdMobHelper.loadNativeAd(context, model.admobNative, new AdMobHelper.AdMobCallback() {
                 @Override
-                public void onSuccess(Object nativeAdObj) {
-                    cachedAdMobNativeAd = nativeAdObj;
+                public void onSuccess(com.google.android.gms.ads.nativead.NativeAd nativeAd) {
+                    cachedAdMobNativeAd = nativeAd;
                     Log.d(TAG, "AD MANAGER: Preloaded AdMob Native Ad successfully into memory cache!");
                 }
 
                 @Override
-                public void onFailure() {
-                    Log.w(TAG, "AD MANAGER: Preload AdMob Native Ad failed.");
+                public void onFailure(String reason) {
+                    Log.w(TAG, "AD MANAGER: Preload AdMob Native Ad failed: " + reason);
                 }
             });
         }
@@ -56,11 +64,11 @@ public class SmartWakeAdManager {
         }
 
         // 1. Check if we have a preloaded AdMob Native Ad in memory cache
-        if (cachedAdMobNativeAd != null) {
+        if (cachedAdMobNativeAd instanceof com.google.android.gms.ads.nativead.NativeAd && isAdMobAvailable()) {
             Log.d(TAG, "AD MANAGER: Displaying preloaded AdMob Native Ad instantly from memory cache!");
-            Object adObj = cachedAdMobNativeAd;
+            com.google.android.gms.ads.nativead.NativeAd nativeAd = (com.google.android.gms.ads.nativead.NativeAd) cachedAdMobNativeAd;
             cachedAdMobNativeAd = null; // Consume cache
-            View renderedView = renderAdMobNativeView(context, container, adObj, callback);
+            View renderedView = AdMobHelper.renderNativeAdView(context, container, nativeAd);
             if (renderedView != null) {
                 container.removeAllViews();
                 container.addView(renderedView);
@@ -107,28 +115,33 @@ public class SmartWakeAdManager {
 
         switch (adType) {
             case 1: // AdMob Native
-                String admobId = (model.admobNative != null && !model.admobNative.trim().isEmpty())
-                        ? model.admobNative : "ca-app-pub-3940256099942544/2247696110";
+                if (isAdMobAvailable()) {
+                    String admobId = (model.admobNative != null && !model.admobNative.trim().isEmpty())
+                            ? model.admobNative : "ca-app-pub-3940256099942544/2247696110";
 
-                loadAdMobNativeObj(context, admobId, new AdMobRawCallback() {
-                    @Override
-                    public void onSuccess(Object nativeAdObj) {
-                        View adView = renderAdMobNativeView(context, container, nativeAdObj, callback);
-                        if (adView != null) {
-                            container.removeAllViews();
-                            container.addView(adView);
-                            if (callback != null) callback.onAdLoaded(adView);
-                        } else {
+                    AdMobHelper.loadNativeAd(context, admobId, new AdMobHelper.AdMobCallback() {
+                        @Override
+                        public void onSuccess(com.google.android.gms.ads.nativead.NativeAd nativeAd) {
+                            View adView = AdMobHelper.renderNativeAdView(context, container, nativeAd);
+                            if (adView != null) {
+                                container.removeAllViews();
+                                container.addView(adView);
+                                if (callback != null) callback.onAdLoaded(adView);
+                            } else {
+                                attemptNextAd(context, container, model, queue, index + 1, callback);
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(String reason) {
                             attemptNextAd(context, container, model, queue, index + 1, callback);
                         }
-                    }
-
-                    @Override
-                    public void onFailure() {
-                        attemptNextAd(context, container, model, queue, index + 1, callback);
-                    }
-                });
-                return;
+                    });
+                    return;
+                } else {
+                    Log.w(TAG, "AD MANAGER: AdMob SDK not present in host app. Skipping type 1.");
+                }
+                break;
 
             case 2: // Facebook / TradPlus Native
                 if (model.fbNative != null && !model.fbNative.trim().isEmpty()) {
@@ -164,154 +177,6 @@ public class SmartWakeAdManager {
         }
 
         attemptNextAd(context, container, model, queue, index + 1, callback);
-    }
-
-    private interface AdMobRawCallback {
-        void onSuccess(Object nativeAdObj);
-        void onFailure();
-    }
-
-    private static void loadAdMobNativeObj(Context context, String adUnitId, AdMobRawCallback callback) {
-        try {
-            try {
-                Class<?> mobileAdsClass = Class.forName("com.google.android.gms.ads.MobileAds");
-                Method initMethod = mobileAdsClass.getMethod("initialize", Context.class);
-                initMethod.invoke(null, context.getApplicationContext());
-            } catch (Throwable ignored) {
-            }
-
-            Class<?> adLoaderClass = Class.forName("com.google.android.gms.ads.AdLoader");
-            Class<?> adLoaderBuilderClass = Class.forName("com.google.android.gms.ads.AdLoader$Builder");
-            Class<?> nativeAdLoadedListenerClass = Class.forName("com.google.android.gms.ads.nativead.NativeAd$OnNativeAdLoadedListener");
-            Class<?> adListenerClass = Class.forName("com.google.android.gms.ads.AdListener");
-            Class<?> adRequestClass = Class.forName("com.google.android.gms.ads.AdRequest");
-
-            Object builder = adLoaderBuilderClass.getConstructor(Context.class, String.class).newInstance(context, adUnitId);
-
-            // Reflectively set OnNativeAdLoadedListener
-            java.lang.reflect.InvocationHandler loadedHandler = (proxy, method, args) -> {
-                if ("onNativeAdLoaded".equals(method.getName()) && args != null && args.length > 0) {
-                    Object nativeAdObj = args[0];
-                    Log.d(TAG, "AD MANAGER: AdMob Native Ad Loaded successfully!");
-                    if (callback != null) callback.onSuccess(nativeAdObj);
-                }
-                return null;
-            };
-
-            Object loadedProxy = java.lang.reflect.Proxy.newProxyInstance(
-                    nativeAdLoadedListenerClass.getClassLoader(),
-                    new Class<?>[]{nativeAdLoadedListenerClass},
-                    loadedHandler
-            );
-
-            Method forNativeAdMethod = adLoaderBuilderClass.getMethod("forNativeAd", nativeAdLoadedListenerClass);
-            forNativeAdMethod.invoke(builder, loadedProxy);
-
-            // Reflectively set AdListener for load errors
-            java.lang.reflect.InvocationHandler listenerHandler = (proxy, method, args) -> {
-                if ("onAdFailedToLoad".equals(method.getName())) {
-                    if (args != null && args.length > 0) {
-                        Log.w(TAG, "AD MANAGER: AdMob Native onAdFailedToLoad error: " + args[0]);
-                    } else {
-                        Log.w(TAG, "AD MANAGER: AdMob Native onAdFailedToLoad.");
-                    }
-                    if (callback != null) callback.onFailure();
-                }
-                return null;
-            };
-
-            Object adListenerProxy = java.lang.reflect.Proxy.newProxyInstance(
-                    adListenerClass.getClassLoader(),
-                    new Class<?>[]{adListenerClass},
-                    listenerHandler
-            );
-
-            Method withAdListenerMethod = adLoaderBuilderClass.getMethod("withAdListener", adListenerClass);
-            withAdListenerMethod.invoke(builder, adListenerProxy);
-
-            Method buildMethod = adLoaderBuilderClass.getMethod("build");
-            Object adLoaderObj = buildMethod.invoke(builder);
-
-            Object adRequestObj = adRequestClass.getConstructor().newInstance();
-            Method loadAdMethod = adLoaderClass.getMethod("loadAd", adRequestClass);
-            loadAdMethod.invoke(adLoaderObj, adRequestObj);
-
-            Log.d(TAG, "AD MANAGER: AdMob Native loadAd requested for ID: " + adUnitId);
-        } catch (Throwable e) {
-            Log.e(TAG, "AD MANAGER: AdMob reflection failed: " + e.getClass().getName() + " - " + e.getMessage(), e);
-            if (callback != null) callback.onFailure();
-        }
-    }
-
-    private static View renderAdMobNativeView(Context context, ViewGroup container, Object nativeAdObj, AdLoadCallback callback) {
-        if (nativeAdObj == null) return null;
-
-        try {
-            Class<?> nativeAdClass = Class.forName("com.google.android.gms.ads.nativead.NativeAd");
-            Class<?> nativeAdViewClass = Class.forName("com.google.android.gms.ads.nativead.NativeAdView");
-
-            // Instantiate com.google.android.gms.ads.nativead.NativeAdView
-            ViewGroup nativeAdView = (ViewGroup) nativeAdViewClass.getConstructor(Context.class).newInstance(context);
-            nativeAdView.setLayoutParams(new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-            ));
-
-            View adLayout = LayoutInflater.from(context).inflate(R.layout.item_smart_wake_custom_ad, nativeAdView, false);
-            nativeAdView.addView(adLayout);
-
-            TextView titleTv = adLayout.findViewById(R.id.smartwake_ad_title);
-            TextView descTv = adLayout.findViewById(R.id.smartwake_ad_desc);
-            ImageView iconIv = adLayout.findViewById(R.id.smartwake_ad_icon);
-            TextView ctaBtn = adLayout.findViewById(R.id.smartwake_ad_cta);
-
-            // Extract NativeAd fields reflectively
-            Method getHeadlineMethod = nativeAdClass.getMethod("getHeadline");
-            Object headlineObj = getHeadlineMethod.invoke(nativeAdObj);
-            if (titleTv != null && headlineObj != null) {
-                titleTv.setText(headlineObj.toString());
-                Method setHeadlineViewMethod = nativeAdViewClass.getMethod("setHeadlineView", View.class);
-                setHeadlineViewMethod.invoke(nativeAdView, titleTv);
-            }
-
-            Method getBodyMethod = nativeAdClass.getMethod("getBody");
-            Object bodyObj = getBodyMethod.invoke(nativeAdObj);
-            if (descTv != null && bodyObj != null) {
-                descTv.setText(bodyObj.toString());
-                Method setBodyViewMethod = nativeAdViewClass.getMethod("setBodyView", View.class);
-                setBodyViewMethod.invoke(nativeAdView, descTv);
-            }
-
-            Method getCallToActionMethod = nativeAdClass.getMethod("getCallToAction");
-            Object ctaObj = getCallToActionMethod.invoke(nativeAdObj);
-            if (ctaBtn != null && ctaObj != null) {
-                ctaBtn.setText(ctaObj.toString());
-                Method setCallToActionViewMethod = nativeAdViewClass.getMethod("setCallToActionView", View.class);
-                setCallToActionViewMethod.invoke(nativeAdView, ctaBtn);
-            }
-
-            Method getIconMethod = nativeAdClass.getMethod("getIcon");
-            Object iconObj = getIconMethod.invoke(nativeAdObj);
-            if (iconIv != null && iconObj != null) {
-                Method getDrawableMethod = iconObj.getClass().getMethod("getDrawable");
-                Object drawableObj = getDrawableMethod.invoke(iconObj);
-                if (drawableObj instanceof android.graphics.drawable.Drawable) {
-                    iconIv.setImageDrawable((android.graphics.drawable.Drawable) drawableObj);
-                }
-                Method setIconViewMethod = nativeAdViewClass.getMethod("setIconView", View.class);
-                setIconViewMethod.invoke(nativeAdView, iconIv);
-            }
-
-            // Register NativeAd Object into NativeAdView
-            Method setNativeAdMethod = nativeAdViewClass.getMethod("setNativeAd", nativeAdClass);
-            setNativeAdMethod.invoke(nativeAdView, nativeAdObj);
-
-            Log.d(TAG, "AD MANAGER: AdMob NativeAdView rendered & bound successfully!");
-            return nativeAdView;
-        } catch (Throwable e) {
-            Log.e(TAG, "AD MANAGER ERROR rendering AdMob NativeView: " + e.getMessage(), e);
-            return buildCustomNativeAdView(context, container, null, callback);
-        }
     }
 
     private static void loadTradPlusFacebookNative(Context context, ViewGroup container, String placementId, AdLoadCallback callback) {
