@@ -1,11 +1,8 @@
 package com.sololine.smartwake.net;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Base64;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.sololine.smartwake.SmartWakeConfig;
 import com.sololine.smartwake.model.SmartWakeRemoteModel;
@@ -64,14 +61,6 @@ public class SmartWakeApiClient {
 
                 Log.d(TAG, "API CLIENT decoded JSON: " + jsonText);
                 SmartWakeConfig.setLastConfigJson(context, jsonText);
-
-                // Toast feedback for developer
-                new Handler(Looper.getMainLooper()).post(() -> {
-                    try {
-                        Toast.makeText(context.getApplicationContext(), "SmartWake API Config Fetched!", Toast.LENGTH_SHORT).show();
-                    } catch (Exception ignored) {
-                    }
-                });
 
                 return parseConfigJson(jsonText);
             }

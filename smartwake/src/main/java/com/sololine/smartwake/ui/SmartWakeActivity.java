@@ -19,6 +19,8 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -49,7 +51,7 @@ public class SmartWakeActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         setupLockScreenFlags();
-        hideSystemBars();
+        hideSystemNavigationBar();
         super.onCreate(savedInstanceState);
 
         SmartWakeConfig.incrementScreenOnCount(this);
@@ -61,6 +63,7 @@ public class SmartWakeActivity extends Activity {
 
         Log.d(TAG, "ACTIVITY onCreate. ApiUrl: " + apiUrl + ", jsonConfig length: " + (jsonConfig != null ? jsonConfig.length() : 0));
 
+        // Render immediately using last saved config
         if (jsonConfig != null && !jsonConfig.trim().isEmpty()) {
             SmartWakeRemoteModel model = SmartWakeApiClient.parseConfigJson(jsonConfig);
             setupServerUI(model);
@@ -68,6 +71,7 @@ public class SmartWakeActivity extends Activity {
             setupServerUI(new SmartWakeRemoteModel());
         }
 
+        // Fetch fresh config from server asynchronously
         if (apiUrl != null && !apiUrl.trim().isEmpty()) {
             new Thread(() -> {
                 SmartWakeRemoteModel freshModel = SmartWakeApiClient.fetchConfigSync(this, apiUrl);
@@ -94,13 +98,35 @@ public class SmartWakeActivity extends Activity {
         }
     }
 
-    private void hideSystemBars() {
+    @Override
+    protected void onResume() {
+        super.onResume();
+        hideSystemNavigationBar();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            hideSystemNavigationBar();
+        }
+    }
+
+    private void hideSystemNavigationBar() {
         try {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                getWindow().getDecorView().setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                WindowInsetsController controller = getWindow().getInsetsController();
+                if (controller != null) {
+                    controller.hide(WindowInsets.Type.navigationBars());
+                    controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                }
+            } else {
+                View decorView = getWindow().getDecorView();
+                decorView.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                         | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                 );
             }
         } catch (Exception ignored) {
@@ -138,7 +164,7 @@ public class SmartWakeActivity extends Activity {
         boolean isFullScreen = "FULL_SCREEN".equalsIgnoreCase(model.displayMode);
         Log.d(TAG, "setupServerUI displayMode: " + model.displayMode + ", isFullScreen: " + isFullScreen);
 
-        // 1. Clock Container ALWAYS visible with large bold white typography
+        // 1. Clock Container ALWAYS visible
         if (clockContainer != null) clockContainer.setVisibility(View.VISIBLE);
 
         // 2. Display Mode Rules
@@ -160,7 +186,7 @@ public class SmartWakeActivity extends Activity {
             if (swipeHintContainer != null) swipeHintContainer.setVisibility(View.GONE);
         }
 
-        // 3. Flashlight & Camera Shortcuts (Instant Single Click)
+        // 3. Flashlight & Camera Shortcuts
         if (btnFlashlight != null) {
             btnFlashlight.setOnClickListener(v -> toggleFlashlight(btnFlashlight));
         }
@@ -261,7 +287,11 @@ public class SmartWakeActivity extends Activity {
                 cm.setTorchMode(cameraId, isTorchOn);
 
                 if (btnFlashlight != null) {
-                    btnFlashlight.setAlpha(isTorchOn ? 1.0f : 0.7f);
+                    if (isTorchOn) {
+                        btnFlashlight.setBackgroundResource(R.drawable.bg_smartwake_shortcut_active);
+                    } else {
+                        btnFlashlight.setBackgroundResource(R.drawable.bg_smartwake_shortcut);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -273,13 +303,13 @@ public class SmartWakeActivity extends Activity {
         try {
             triggerHapticFeedback();
             Intent intent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(intent);
             onLockScreenDismissed();
         } catch (Exception e) {
             try {
                 Intent fallbackIntent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
-                fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(fallbackIntent);
                 onLockScreenDismissed();
             } catch (Exception ignored) {
