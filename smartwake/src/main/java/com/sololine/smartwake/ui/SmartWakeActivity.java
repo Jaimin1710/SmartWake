@@ -300,20 +300,49 @@ public class SmartWakeActivity extends Activity {
     }
 
     private void launchCamera() {
+        triggerHapticFeedback();
+
+        boolean launched = false;
+
+        // 1. Secure LockScreen Camera Intent
         try {
-            triggerHapticFeedback();
-            Intent intent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            startActivity(intent);
-            onLockScreenDismissed();
-        } catch (Exception e) {
+            Intent secureIntent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE);
+            secureIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(secureIntent);
+            launched = true;
+            Log.d(TAG, "Launched secure camera intent.");
+        } catch (Exception e1) {
+            Log.w(TAG, "Secure camera intent failed, trying standard camera intent: " + e1.getMessage());
+        }
+
+        // 2. Standard Still Image Camera Intent
+        if (!launched) {
             try {
-                Intent fallbackIntent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
-                fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                startActivity(fallbackIntent);
-                onLockScreenDismissed();
-            } catch (Exception ignored) {
+                Intent standardIntent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
+                standardIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(standardIntent);
+                launched = true;
+                Log.d(TAG, "Launched standard camera intent.");
+            } catch (Exception e2) {
+                Log.w(TAG, "Standard camera intent failed, trying action capture intent: " + e2.getMessage());
             }
+        }
+
+        // 3. Fallback Action Image Capture Intent
+        if (!launched) {
+            try {
+                Intent captureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                captureIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(captureIntent);
+                launched = true;
+                Log.d(TAG, "Launched action capture intent.");
+            } catch (Exception e3) {
+                Log.e(TAG, "All camera intents failed: " + e3.getMessage());
+            }
+        }
+
+        if (launched) {
+            onLockScreenDismissed();
         }
     }
 
