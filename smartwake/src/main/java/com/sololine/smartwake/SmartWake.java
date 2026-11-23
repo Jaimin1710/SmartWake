@@ -265,17 +265,24 @@ public class SmartWake {
             if (apiUrl != null && !apiUrl.trim().isEmpty()) {
                 SmartWakeConfig.setApiUrl(context, apiUrl);
 
-                new Thread(() -> {
-                    Log.d(TAG, "BUILDER THREAD: Fetching initial config from " + apiUrl);
-                    SmartWakeRemoteModel model = SmartWakeApiClient.fetchConfigSync(context, apiUrl);
-                    if (model != null) {
-                        if (model.workerTimeHours > 0) {
+                String cachedJson = SmartWakeConfig.getLastConfigJson(context);
+                SmartWakeRemoteModel cachedModel = SmartWakeApiClient.parseConfigJson(cachedJson);
+                int intervalMinutes = cachedModel.workerTimeHours;
+
+                if (SmartWakeConfig.shouldFetchApi(context, intervalMinutes)) {
+                    new Thread(() -> {
+                        Log.d(TAG, "BUILDER THREAD: Fetching initial config from " + apiUrl);
+                        SmartWakeRemoteModel model = SmartWakeApiClient.fetchConfigSync(context, apiUrl);
+                        if (model != null) {
                             SmartWakeSyncManager.schedulePeriodicSync(context, model.workerTimeHours);
+                            com.sololine.smartwake.ads.SmartWakeAdManager.preloadAds(context, model);
                         }
-                        // Preload initial ad into background memory!
-                        com.sololine.smartwake.ads.SmartWakeAdManager.preloadAds(context, model);
-                    }
-                }).start();
+                    }).start();
+                } else {
+                    Log.d(TAG, "BUILDER: Skipping initial API fetch. Interval (" + intervalMinutes + " minutes) not elapsed.");
+                    SmartWakeSyncManager.schedulePeriodicSync(context, intervalMinutes);
+                    com.sololine.smartwake.ads.SmartWakeAdManager.preloadAds(context, cachedModel);
+                }
             }
 
             SmartWakeConfig.setSwipeDirection(context, swipeDirection);

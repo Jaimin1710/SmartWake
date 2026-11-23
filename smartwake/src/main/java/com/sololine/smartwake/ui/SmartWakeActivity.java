@@ -68,23 +68,30 @@ public class SmartWakeActivity extends Activity {
         Log.d(TAG, "ACTIVITY onCreate. ApiUrl: " + apiUrl + ", jsonConfig length: " + (jsonConfig != null ? jsonConfig.length() : 0));
 
         // Render immediately using last saved config
+        SmartWakeRemoteModel cachedModel;
         if (jsonConfig != null && !jsonConfig.trim().isEmpty()) {
-            SmartWakeRemoteModel model = SmartWakeApiClient.parseConfigJson(jsonConfig);
-            setupServerUI(model);
+            cachedModel = SmartWakeApiClient.parseConfigJson(jsonConfig);
         } else {
-            setupServerUI(new SmartWakeRemoteModel());
+            cachedModel = new SmartWakeRemoteModel();
         }
+        setupServerUI(cachedModel);
 
-        // Fetch fresh config from server asynchronously
+        // Fetch fresh config from server ONLY IF the interval (in minutes) has elapsed
         if (apiUrl != null && !apiUrl.trim().isEmpty()) {
-            new Thread(() -> {
-                SmartWakeRemoteModel freshModel = SmartWakeApiClient.fetchConfigSync(this, apiUrl);
-                runOnUiThread(() -> {
-                    if (freshModel != null && freshModel.showLockscreen) {
-                        setupServerUI(freshModel);
-                    }
-                });
-            }).start();
+            int intervalMinutes = cachedModel.workerTimeHours;
+            if (SmartWakeConfig.shouldFetchApi(this, intervalMinutes)) {
+                Log.d(TAG, "ACTIVITY: Config interval elapsed (" + intervalMinutes + " minutes). Fetching fresh API config...");
+                new Thread(() -> {
+                    SmartWakeRemoteModel freshModel = SmartWakeApiClient.fetchConfigSync(this, apiUrl);
+                    runOnUiThread(() -> {
+                        if (freshModel != null && freshModel.showLockscreen) {
+                            setupServerUI(freshModel);
+                        }
+                    });
+                }).start();
+            } else {
+                Log.d(TAG, "ACTIVITY: Skipping API call on screen-on. Config interval (" + intervalMinutes + " minutes) has not elapsed yet.");
+            }
         }
 
         registerUnlockReceiver();

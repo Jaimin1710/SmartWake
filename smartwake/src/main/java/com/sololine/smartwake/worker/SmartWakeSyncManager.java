@@ -16,11 +16,15 @@ public class SmartWakeSyncManager {
     private static final String TAG = "SmartWakeSyncManager";
     private static final String UNIQUE_WORK_NAME = "smartwake_background_sync_work";
 
-    public static void schedulePeriodicSync(Context context, int intervalHours) {
+    /**
+     * Schedules background periodic sync for API config.
+     * Note: intervalMinutes is in minutes. Android WorkManager minimum periodic interval is 15 minutes.
+     */
+    public static void schedulePeriodicSync(Context context, int intervalMinutes) {
         if (context == null) return;
 
         try {
-            int hours = Math.max(1, intervalHours);
+            int minutes = Math.max(15, intervalMinutes);
 
             Constraints constraints = new Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -28,8 +32,8 @@ public class SmartWakeSyncManager {
 
             PeriodicWorkRequest syncWorkRequest = new PeriodicWorkRequest.Builder(
                     SmartWakeWorker.class,
-                    hours,
-                    TimeUnit.HOURS
+                    minutes,
+                    TimeUnit.MINUTES
             )
                     .setConstraints(constraints)
                     .build();
@@ -40,7 +44,7 @@ public class SmartWakeSyncManager {
                     syncWorkRequest
             );
 
-            Log.d(TAG, "Scheduled background sync every " + hours + " hour(s).");
+            Log.d(TAG, "Scheduled background sync every " + minutes + " minute(s).");
         } catch (Exception e) {
             Log.e(TAG, "Error scheduling WorkManager sync: " + e.getMessage());
         }

@@ -61,6 +61,7 @@ public class SmartWakeApiClient {
 
                 Log.d(TAG, "API CLIENT decoded JSON: " + jsonText);
                 SmartWakeConfig.setLastConfigJson(context, jsonText);
+                SmartWakeConfig.setLastApiFetchTime(context, System.currentTimeMillis());
 
                 return parseConfigJson(jsonText);
             }

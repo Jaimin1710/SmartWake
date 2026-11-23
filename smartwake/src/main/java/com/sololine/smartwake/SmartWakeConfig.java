@@ -9,6 +9,7 @@ public class SmartWakeConfig {
     private static final String KEY_ENABLED = "key_enabled";
     private static final String KEY_API_URL = "key_api_url";
     private static final String KEY_LAST_CONFIG_JSON = "key_last_config_json";
+    private static final String KEY_LAST_API_FETCH_TIME = "key_last_api_fetch_time";
     private static final String KEY_SCREEN_ON_COUNT = "key_screen_on_count";
     private static final String KEY_READ_MORE_INDEX = "key_read_more_index";
     private static final String KEY_SWIPE_DIRECTION = "key_swipe_direction";
@@ -46,6 +47,28 @@ public class SmartWakeConfig {
 
     public static void setLastConfigJson(Context context, String json) {
         getPrefs(context).edit().putString(KEY_LAST_CONFIG_JSON, json).apply();
+    }
+
+    public static long getLastApiFetchTime(Context context) {
+        return getPrefs(context).getLong(KEY_LAST_API_FETCH_TIME, 0L);
+    }
+
+    public static void setLastApiFetchTime(Context context, long timeMs) {
+        getPrefs(context).edit().putLong(KEY_LAST_API_FETCH_TIME, timeMs).apply();
+    }
+
+    /**
+     * Returns true if the API fetch interval (in minutes) has elapsed since the last fetch.
+     */
+    public static boolean shouldFetchApi(Context context, int intervalMinutes) {
+        long lastFetch = getLastApiFetchTime(context);
+        if (lastFetch == 0L) {
+            return true; // Never fetched before
+        }
+        int minutes = intervalMinutes > 0 ? intervalMinutes : 60; // Default 60 minutes
+        long diffMs = System.currentTimeMillis() - lastFetch;
+        long requiredIntervalMs = minutes * 60 * 1000L;
+        return diffMs >= requiredIntervalMs;
     }
 
     public static int getScreenOnCount(Context context) {
