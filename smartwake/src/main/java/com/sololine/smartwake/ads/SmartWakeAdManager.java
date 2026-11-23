@@ -15,7 +15,6 @@ import com.sololine.smartwake.SmartWakeConfig;
 import com.sololine.smartwake.analytics.SmartWakeAnalytics;
 import com.sololine.smartwake.model.SmartWakeRemoteModel;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -63,23 +62,6 @@ public class SmartWakeAdManager {
         }
     }
 
-    private static Class<?> getTradPlusListenerClass() {
-        String[] possibleNames = new String[]{
-                "com.tradplus.ads.open.nativead.TPNativeAdListener",
-                "com.tradplus.ads.open.nativead.TPNative$TPNativeAdListener",
-                "com.tradplus.ads.open.nativead.TPNative$OnNativeAdListener",
-                "com.tradplus.ads.open.nativead.TPNative$OnNativeAdLoadedListener",
-                "com.tradplus.ads.open.nativead.NativeAdListener"
-        };
-        for (String name : possibleNames) {
-            try {
-                return Class.forName(name);
-            } catch (Throwable ignored) {
-            }
-        }
-        return null;
-    }
-
     /**
      * Preloads ads in background memory so they are instantly ready for the next screen-on event.
      */
@@ -125,54 +107,27 @@ public class SmartWakeAdManager {
             if (cachedTradPlusNativeAd == null && !isTradPlusLoading) {
                 isTradPlusLoading = true;
                 Log.d(TAG, "AD MANAGER: Preloading fresh TradPlus/Facebook Native Ad in background...");
-                preloadTradPlusFacebookNative(context, model.fbNative);
+                TradPlusHelper.loadNativeAd(context, model.fbNative, new TradPlusHelper.TradPlusCallback() {
+                    @Override
+                    public void onSuccess(com.tradplus.ads.open.nativead.TPNative tpNative) {
+                        cachedTradPlusNativeAd = tpNative;
+                        isTradPlusLoading = false;
+                        Log.d(TAG, "AD MANAGER: Preloaded TradPlus Facebook Native Ad into memory cache!");
+                    }
+
+                    @Override
+                    public void onFailure(String reason) {
+                        isTradPlusLoading = false;
+                        Log.w(TAG, "AD MANAGER: Preload TradPlus Facebook Native Ad failed: " + reason);
+                    }
+
+                    @Override
+                    public void onAdClicked() {
+                        SmartWakeAnalytics.logAdClick(context, "facebook");
+                        notifyAdClicked();
+                    }
+                });
             }
-        }
-    }
-
-    private static void preloadTradPlusFacebookNative(Context context, String placementId) {
-        try {
-            Class<?> tpNativeClass = Class.forName("com.tradplus.ads.open.nativead.TPNative");
-            Object tpNativeObj = tpNativeClass.getConstructor(Context.class, String.class).newInstance(context, placementId);
-
-            Class<?> listenerClass = getTradPlusListenerClass();
-            if (listenerClass == null) {
-                isTradPlusLoading = false;
-                Log.w(TAG, "AD MANAGER: TradPlus listener interface not found in app classpath.");
-                return;
-            }
-
-            java.lang.reflect.InvocationHandler handler = (proxy, method, args) -> {
-                String mName = method.getName().toLowerCase();
-                if (mName.contains("loaded")) {
-                    cachedTradPlusNativeAd = tpNativeObj;
-                    isTradPlusLoading = false;
-                    Log.d(TAG, "AD MANAGER: Preloaded TradPlus Facebook Native Ad into memory cache!");
-                } else if (mName.contains("click")) {
-                    SmartWakeAnalytics.logAdClick(context, "facebook");
-                    notifyAdClicked();
-                } else if (mName.contains("fail") || mName.contains("error")) {
-                    isTradPlusLoading = false;
-                    Log.w(TAG, "AD MANAGER: Preload TradPlus Facebook Native Ad failed: " + (args != null && args.length > 0 ? args[0] : ""));
-                }
-                return null;
-            };
-
-            Object listenerProxy = java.lang.reflect.Proxy.newProxyInstance(
-                    listenerClass.getClassLoader(),
-                    new Class<?>[]{listenerClass},
-                    handler
-            );
-
-            Method setAdListenerMethod = tpNativeClass.getMethod("setAdListener", listenerClass);
-            setAdListenerMethod.invoke(tpNativeObj, listenerProxy);
-
-            Method loadAdMethod = tpNativeClass.getMethod("loadAd");
-            loadAdMethod.invoke(tpNativeObj);
-
-        } catch (Throwable e) {
-            isTradPlusLoading = false;
-            Log.w(TAG, "AD MANAGER: Preload TradPlus reflection failed: " + e.getMessage());
         }
     }
 
@@ -218,25 +173,20 @@ public class SmartWakeAdManager {
         }
 
         // Check TradPlus / Facebook preloaded cache
-        if (primaryType == 2 && cachedTradPlusNativeAd != null && isTradPlusAvailable()) {
+        if (primaryType == 2 && cachedTradPlusNativeAd instanceof com.tradplus.ads.open.nativead.TPNative && isTradPlusAvailable()) {
             Log.d(TAG, "AD MANAGER: Displaying preloaded TradPlus/Facebook Native Ad instantly from memory cache!");
-            Object tpNativeObj = cachedTradPlusNativeAd;
+            com.tradplus.ads.open.nativead.TPNative tpNative = (com.tradplus.ads.open.nativead.TPNative) cachedTradPlusNativeAd;
             cachedTradPlusNativeAd = null; // Consume cache
 
-            try {
-                Class<?> tpNativeClass = Class.forName("com.tradplus.ads.open.nativead.TPNative");
-                Method showAdMethod = tpNativeClass.getMethod("showAd", ViewGroup.class);
+            boolean shown = TradPlusHelper.showAd(context, container, tpNative);
+            if (shown) {
                 activeAdType = "facebook";
-                container.removeAllViews();
-                showAdMethod.invoke(tpNativeObj, container);
                 SmartWakeAnalytics.logAdShow(context, "facebook");
                 if (callback != null) callback.onAdLoaded(container);
 
                 // Immediately trigger background preloading for the NEXT screen-on event!
                 preloadAds(context, model);
                 return;
-            } catch (Throwable e) {
-                Log.w(TAG, "AD MANAGER: Error displaying preloaded TradPlus ad: " + e.getMessage());
             }
         }
 
@@ -310,19 +260,25 @@ public class SmartWakeAdManager {
                 break;
 
             case 2: // Facebook / TradPlus Native
-                if (model.fbNative != null && !model.fbNative.trim().isEmpty()) {
-                    loadTradPlusFacebookNative(context, container, model.fbNative, new AdLoadCallback() {
+                if (model.fbNative != null && !model.fbNative.trim().isEmpty() && isTradPlusAvailable()) {
+                    TradPlusHelper.loadNativeAd(context, model.fbNative, new TradPlusHelper.TradPlusCallback() {
                         @Override
-                        public void onAdLoaded(View adView) {
-                            activeAdType = "facebook";
-                            SmartWakeAnalytics.logAdShow(context, "facebook");
-                            if (callback != null) callback.onAdLoaded(adView);
-                            // Trigger preloading for NEXT screen-on event!
-                            preloadAds(context, model);
+                        public void onSuccess(com.tradplus.ads.open.nativead.TPNative tpNative) {
+                            boolean shown = TradPlusHelper.showAd(context, container, tpNative);
+                            if (shown) {
+                                activeAdType = "facebook";
+                                SmartWakeAnalytics.logAdShow(context, "facebook");
+                                if (callback != null) callback.onAdLoaded(container);
+
+                                // Trigger preloading for NEXT screen-on event!
+                                preloadAds(context, model);
+                            } else {
+                                attemptNextAd(context, container, model, queue, index + 1, callback);
+                            }
                         }
 
                         @Override
-                        public void onAdFailedAll() {
+                        public void onFailure(String reason) {
                             attemptNextAd(context, container, model, queue, index + 1, callback);
                         }
 
@@ -353,76 +309,6 @@ public class SmartWakeAdManager {
         }
 
         attemptNextAd(context, container, model, queue, index + 1, callback);
-    }
-
-    private static void loadTradPlusFacebookNative(Context context, ViewGroup container, String placementId, AdLoadCallback callback) {
-        try {
-            Class<?> tpNativeClass = Class.forName("com.tradplus.ads.open.nativead.TPNative");
-            Object tpNativeObj = tpNativeClass.getConstructor(Context.class, String.class).newInstance(context, placementId);
-
-            Class<?> listenerClass = getTradPlusListenerClass();
-            if (listenerClass == null) {
-                Log.w(TAG, "AD MANAGER: TradPlus listener interface not found in app classpath.");
-                if (callback != null) callback.onAdFailedAll();
-                return;
-            }
-
-            java.lang.reflect.InvocationHandler handler = (proxy, method, args) -> {
-                String mName = method.getName().toLowerCase();
-                if (mName.contains("loaded")) {
-                    container.post(() -> {
-                        try {
-                            Method showAdMethod = tpNativeClass.getMethod("showAd", ViewGroup.class);
-                            showAdMethod.invoke(tpNativeObj, container);
-                            if (callback != null) callback.onAdLoaded(container);
-                        } catch (Exception e) {
-                            Log.w(TAG, "AD MANAGER: TradPlus showAd reflection failed: " + e.getMessage());
-                            if (callback != null) callback.onAdFailedAll();
-                        }
-                    });
-                } else if (mName.contains("click")) {
-                    SmartWakeAnalytics.logAdClick(context, "facebook");
-                    notifyAdClicked();
-                } else if (mName.contains("fail") || mName.contains("error")) {
-                    Log.w(TAG, "AD MANAGER: TradPlus onAdFailed: " + (args != null && args.length > 0 ? args[0] : ""));
-                    if (callback != null) callback.onAdFailedAll();
-                }
-                return null;
-            };
-
-            Object listenerProxy = java.lang.reflect.Proxy.newProxyInstance(
-                    listenerClass.getClassLoader(),
-                    new Class<?>[]{listenerClass},
-                    handler
-            );
-
-            Method setAdListenerMethod = tpNativeClass.getMethod("setAdListener", listenerClass);
-            setAdListenerMethod.invoke(tpNativeObj, listenerProxy);
-
-            Method loadAdMethod = tpNativeClass.getMethod("loadAd");
-            loadAdMethod.invoke(tpNativeObj);
-
-            Log.d(TAG, "AD MANAGER: TradPlus Facebook Native loadAd initiated for ID: " + placementId);
-        } catch (Throwable e) {
-            Log.w(TAG, "AD MANAGER: TradPlus reflection failed: " + e.getMessage());
-            loadFacebookNative(context, container, placementId, callback);
-        }
-    }
-
-    private static void loadFacebookNative(Context context, ViewGroup container, String placementId, AdLoadCallback callback) {
-        try {
-            Class<?> nativeAdClass = Class.forName("com.facebook.ads.NativeAd");
-            Object nativeAdObj = nativeAdClass.getConstructor(Context.class, String.class).newInstance(context, placementId);
-
-            Method loadAdMethod = nativeAdClass.getMethod("loadAd");
-            loadAdMethod.invoke(nativeAdObj);
-
-            Log.d(TAG, "AD MANAGER: Facebook Native loadAd initiated.");
-            if (callback != null) callback.onAdFailedAll();
-        } catch (Throwable e) {
-            Log.w(TAG, "AD MANAGER: Facebook SDK reflection failed: " + e.getMessage());
-            if (callback != null) callback.onAdFailedAll();
-        }
     }
 
     private static View buildCustomNativeAdView(Context context, ViewGroup container, SmartWakeRemoteModel model, AdLoadCallback callback) {
