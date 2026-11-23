@@ -63,6 +63,23 @@ public class SmartWakeAdManager {
         }
     }
 
+    private static Class<?> getTradPlusListenerClass() {
+        String[] possibleNames = new String[]{
+                "com.tradplus.ads.open.nativead.TPNativeAdListener",
+                "com.tradplus.ads.open.nativead.TPNative$TPNativeAdListener",
+                "com.tradplus.ads.open.nativead.TPNative$OnNativeAdListener",
+                "com.tradplus.ads.open.nativead.TPNative$OnNativeAdLoadedListener",
+                "com.tradplus.ads.open.nativead.NativeAdListener"
+        };
+        for (String name : possibleNames) {
+            try {
+                return Class.forName(name);
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
+    }
+
     /**
      * Preloads ads in background memory so they are instantly ready for the next screen-on event.
      */
@@ -118,7 +135,12 @@ public class SmartWakeAdManager {
             Class<?> tpNativeClass = Class.forName("com.tradplus.ads.open.nativead.TPNative");
             Object tpNativeObj = tpNativeClass.getConstructor(Context.class, String.class).newInstance(context, placementId);
 
-            Class<?> listenerClass = Class.forName("com.tradplus.ads.open.nativead.TPNativeAdListener");
+            Class<?> listenerClass = getTradPlusListenerClass();
+            if (listenerClass == null) {
+                isTradPlusLoading = false;
+                Log.w(TAG, "AD MANAGER: TradPlus listener interface not found in app classpath.");
+                return;
+            }
 
             java.lang.reflect.InvocationHandler handler = (proxy, method, args) -> {
                 String mName = method.getName().toLowerCase();
@@ -338,7 +360,12 @@ public class SmartWakeAdManager {
             Class<?> tpNativeClass = Class.forName("com.tradplus.ads.open.nativead.TPNative");
             Object tpNativeObj = tpNativeClass.getConstructor(Context.class, String.class).newInstance(context, placementId);
 
-            Class<?> listenerClass = Class.forName("com.tradplus.ads.open.nativead.TPNativeAdListener");
+            Class<?> listenerClass = getTradPlusListenerClass();
+            if (listenerClass == null) {
+                Log.w(TAG, "AD MANAGER: TradPlus listener interface not found in app classpath.");
+                if (callback != null) callback.onAdFailedAll();
+                return;
+            }
 
             java.lang.reflect.InvocationHandler handler = (proxy, method, args) -> {
                 String mName = method.getName().toLowerCase();
