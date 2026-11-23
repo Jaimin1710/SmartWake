@@ -5,6 +5,7 @@ import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.KeyguardManager;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -369,20 +370,45 @@ public class SmartWakeActivity extends Activity {
     private void launchCamera() {
         triggerHapticFeedback();
 
-        boolean launched = false;
-
-        // 1. Secure LockScreen Camera Intent
-        try {
-            Intent secureIntent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE);
-            secureIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            startActivity(secureIntent);
-            launched = true;
-            Log.d(TAG, "Launched secure camera intent.");
-        } catch (Exception e1) {
-            Log.w(TAG, "Secure camera intent failed, trying standard camera intent: " + e1.getMessage());
+        // 1. Request Keyguard Dismissal so Samsung One UI & Android 13/14 allow Camera on top
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            try {
+                KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+                if (km != null) {
+                    km.requestDismissKeyguard(this, null);
+                }
+            } catch (Exception ignored) {
+            }
         }
 
-        // 2. Standard Still Image Camera Intent
+        boolean launched = false;
+
+        // Try 1: Samsung Native Camera Component (Samsung Galaxy S23 Ultra / One UI)
+        try {
+            Intent samsungIntent = new Intent();
+            samsungIntent.setComponent(new ComponentName("com.sec.android.app.camera", "com.sec.android.app.camera.Camera"));
+            samsungIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(samsungIntent);
+            launched = true;
+            Log.d(TAG, "Launched Samsung native camera component.");
+        } catch (Exception e1) {
+            Log.w(TAG, "Samsung native camera component failed: " + e1.getMessage());
+        }
+
+        // Try 2: Secure LockScreen Camera Intent
+        if (!launched) {
+            try {
+                Intent secureIntent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE);
+                secureIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(secureIntent);
+                launched = true;
+                Log.d(TAG, "Launched secure camera intent.");
+            } catch (Exception e2) {
+                Log.w(TAG, "Secure camera intent failed: " + e2.getMessage());
+            }
+        }
+
+        // Try 3: Standard Still Image Camera Intent
         if (!launched) {
             try {
                 Intent standardIntent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
@@ -390,12 +416,12 @@ public class SmartWakeActivity extends Activity {
                 startActivity(standardIntent);
                 launched = true;
                 Log.d(TAG, "Launched standard camera intent.");
-            } catch (Exception e2) {
-                Log.w(TAG, "Standard camera intent failed, trying action capture intent: " + e2.getMessage());
+            } catch (Exception e3) {
+                Log.w(TAG, "Standard camera intent failed: " + e3.getMessage());
             }
         }
 
-        // 3. Fallback Action Image Capture Intent
+        // Try 4: Fallback Action Capture Intent
         if (!launched) {
             try {
                 Intent captureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
@@ -403,14 +429,13 @@ public class SmartWakeActivity extends Activity {
                 startActivity(captureIntent);
                 launched = true;
                 Log.d(TAG, "Launched action capture intent.");
-            } catch (Exception e3) {
-                Log.e(TAG, "All camera intents failed: " + e3.getMessage());
+            } catch (Exception e4) {
+                Log.e(TAG, "All camera intents failed: " + e4.getMessage());
             }
         }
 
-        if (launched) {
-            onLockScreenDismissed();
-        }
+        // Always dismiss SmartWakeActivity so camera is not hidden underneath
+        onLockScreenDismissed();
     }
 
     private void openReadMoreUrl(List<String> links) {
