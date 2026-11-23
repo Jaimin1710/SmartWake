@@ -54,7 +54,11 @@ public class SmartWake {
 
         Intent serviceIntent = new Intent(appContext, SmartWakeService.class);
         try {
-            appContext.startService(serviceIntent);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                appContext.startForegroundService(serviceIntent);
+            } else {
+                appContext.startService(serviceIntent);
+            }
             Log.d(TAG, "START: SmartWake background service launched successfully.");
         } catch (Exception e) {
             Log.e(TAG, "START ERROR: Failed to start SmartWake service", e);
@@ -105,6 +109,16 @@ public class SmartWake {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
                     | Intent.FLAG_ACTIVITY_SINGLE_TOP
                     | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+            int flags = android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                flags |= android.app.PendingIntent.FLAG_IMMUTABLE;
+            }
+            android.app.PendingIntent pi = android.app.PendingIntent.getActivity(appContext, 1002, intent, flags);
+            try {
+                pi.send();
+            } catch (Exception ignored) {
+            }
 
             appContext.startActivity(intent);
             Log.d(TAG, "LAUNCH LOCKSCREEN: Direct startActivity executed.");
