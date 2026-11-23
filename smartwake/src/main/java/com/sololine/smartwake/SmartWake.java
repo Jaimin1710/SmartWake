@@ -1,18 +1,12 @@
 package com.sololine.smartwake;
 
 import android.app.Activity;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
-
-import androidx.core.app.NotificationCompat;
 
 import com.sololine.smartwake.model.SmartWakeRemoteModel;
 import com.sololine.smartwake.net.SmartWakeApiClient;
@@ -24,7 +18,6 @@ import com.sololine.smartwake.worker.SmartWakeSyncManager;
 public class SmartWake {
 
     public static final String TAG = "SmartWake";
-    private static final String FULL_SCREEN_CHANNEL_ID = "smartwake_fullscreen_channel";
     private static SmartWakeListener globalListener;
 
     /**
@@ -98,8 +91,7 @@ public class SmartWake {
     }
 
     /**
-     * Launches the LockScreen Activity using FullScreenIntent & direct startActivity
-     * to bypass Android 10+ Background Activity Launch Restrictions.
+     * Launches the LockScreen Activity directly on screen-on.
      */
     public static void launchLockScreen(Context context) {
         if (context == null) return;
@@ -107,49 +99,16 @@ public class SmartWake {
         Log.d(TAG, "LAUNCH LOCKSCREEN: Triggering SmartWakeActivity...");
         Context appContext = context.getApplicationContext();
 
-        Intent intent = new Intent(appContext, SmartWakeActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                | Intent.FLAG_ACTIVITY_SINGLE_TOP
-                | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-
-        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            flags |= PendingIntent.FLAG_IMMUTABLE;
-        }
-        PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(appContext, 1002, intent, flags);
-
-        NotificationManager notificationManager = (NotificationManager) appContext.getSystemService(Context.NOTIFICATION_SERVICE);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    FULL_SCREEN_CHANNEL_ID,
-                    "SmartWake LockScreen Trigger",
-                    NotificationManager.IMPORTANCE_HIGH
-            );
-            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-            if (notificationManager != null) {
-                notificationManager.createNotificationChannel(channel);
-            }
-        }
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(appContext, FULL_SCREEN_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_smartwake_lock)
-                .setContentTitle("SmartWake")
-                .setContentText("LockScreen active")
-                .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
-                .setFullScreenIntent(fullScreenPendingIntent, true)
-                .setAutoCancel(true);
-
-        if (notificationManager != null) {
-            notificationManager.notify(1002, builder.build());
-        }
-
         try {
+            Intent intent = new Intent(appContext, SmartWakeActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                    | Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
             appContext.startActivity(intent);
-            Log.d(TAG, "LAUNCH LOCKSCREEN: startActivity executed.");
+            Log.d(TAG, "LAUNCH LOCKSCREEN: Direct startActivity executed.");
         } catch (Exception e) {
-            Log.w(TAG, "LAUNCH LOCKSCREEN: Direct startActivity failed (handled by FullScreenIntent): " + e.getMessage());
+            Log.e(TAG, "LAUNCH LOCKSCREEN ERROR: Failed to launch SmartWakeActivity", e);
         }
     }
 
