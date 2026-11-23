@@ -222,10 +222,7 @@ public class SmartWakeActivity extends Activity {
         ViewPager2 viewPager = findViewById(R.id.smartwake_wallpaper_viewpager);
         View clockContainer = findViewById(R.id.smartwake_clock_container);
         TextView tvWeather = findViewById(R.id.smartwake_tv_weather);
-        TextView tvQuote = findViewById(R.id.smartwake_tv_quote);
-        TextView tvNewsSports = findViewById(R.id.smartwake_tv_news_sports);
         ViewGroup adContainer = findViewById(R.id.smartwake_ad_container);
-        View btnReadMore = findViewById(R.id.smartwake_btn_read_more);
         ImageView btnFlashlight = findViewById(R.id.smartwake_btn_flashlight);
         ImageView btnCamera = findViewById(R.id.smartwake_btn_camera);
         View swipeHintContainer = findViewById(R.id.smartwake_swipe_hint_container);
@@ -280,41 +277,7 @@ public class SmartWakeActivity extends Activity {
             tvWeather.setVisibility(View.GONE);
         }
 
-        // 5. Quotes
-        if (model.showQuotes && model.quotes != null && !model.quotes.isEmpty() && tvQuote != null) {
-            tvQuote.setVisibility(View.VISIBLE);
-            int count = SmartWakeConfig.getScreenOnCount(this);
-            String quote = model.quotes.get(count % model.quotes.size());
-            tvQuote.setText("“" + quote + "”");
-        }
-
-        // 6. News / Sports
-        if (tvNewsSports != null) {
-            StringBuilder sb = new StringBuilder();
-            if (model.showSports && model.sportsCricket != null && !model.sportsCricket.isEmpty()) {
-                sb.append("🏏 ").append(model.sportsCricket);
-            } else if (model.showNews && model.news != null && !model.news.isEmpty()) {
-                int count = SmartWakeConfig.getScreenOnCount(this);
-                sb.append("📰 ").append(model.news.get(count % model.news.size()));
-            }
-
-            if (sb.length() > 0) {
-                tvNewsSports.setVisibility(View.VISIBLE);
-                tvNewsSports.setText(sb.toString());
-            }
-        }
-
-        // 7. Read More Redirect Button
-        if (model.readMoreLinks != null && !model.readMoreLinks.isEmpty() && btnReadMore != null) {
-            btnReadMore.setVisibility(View.VISIBLE);
-            btnReadMore.setOnClickListener(v -> {
-                SmartWakeAnalytics.logEvent(this, SmartWakeAnalytics.EVENT_READ_MORE, null);
-                openReadMoreUrl(model.readMoreLinks);
-                onLockScreenDismissed();
-            });
-        }
-
-        // 8. Native Ad Engine
+        // 5. Native Ad Engine (AdMob, Facebook/TradPlus, Custom Native List)
         if (model.showAd && adContainer != null) {
             adContainer.setVisibility(View.VISIBLE);
             SmartWakeAdManager.loadAndDisplayAd(this, adContainer, model, new SmartWakeAdManager.AdLoadCallback() {
@@ -431,21 +394,7 @@ public class SmartWakeActivity extends Activity {
         overridePendingTransition(0, android.R.anim.fade_out);
     }
 
-    private void openReadMoreUrl(List<String> links) {
-        if (links == null || links.isEmpty()) return;
 
-        int index = SmartWakeConfig.getReadMoreIndex(this);
-        String url = links.get(index % links.size());
-        SmartWakeConfig.incrementReadMoreIndex(this);
-
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-        } catch (Exception e) {
-            Log.e(TAG, "Error launching Read More URL: " + e.getMessage());
-        }
-    }
 
     private void registerUnlockReceiver() {
         unlockReceiver = new BroadcastReceiver() {

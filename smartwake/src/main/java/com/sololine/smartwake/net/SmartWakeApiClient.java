@@ -90,9 +90,6 @@ public class SmartWakeApiClient {
             model.showAd = json.optBoolean("show_ad", true);
             model.showWeather = json.optBoolean("show_weather", true);
             model.showWallpapers = json.optBoolean("show_wallpapers", true);
-            model.showNews = json.optBoolean("show_news", true);
-            model.showSports = json.optBoolean("show_sports", true);
-            model.showQuotes = json.optBoolean("show_quotes", true);
 
             // Native Ad Priority Arrays
             JSONArray adPriorityArr = json.optJSONArray("adspriority");
@@ -112,36 +109,32 @@ public class SmartWakeApiClient {
             model.admobNative = json.optString("admob_native", "");
             model.fbNative = json.optString("fb_native", "");
 
-            JSONObject customObj = json.optJSONObject("custom_native");
-            if (customObj != null) {
-                model.customNativeTitle = customObj.optString("title", "");
-                model.customNativeDesc = customObj.optString("description", "");
-                model.customNativeIcon = customObj.optString("icon", "");
-                model.customNativeCta = customObj.optString("cta", "");
-                model.customNativeLink = customObj.optString("link", "");
-            }
-
-            // Quotes
-            JSONArray quotesArr = json.optJSONArray("quotes");
-            if (quotesArr != null) {
-                for (int i = 0; i < quotesArr.length(); i++) {
-                    model.quotes.add(quotesArr.getString(i));
+            // Custom Native Ads (Supports both JSONArray of objects or single JSONObject)
+            JSONArray customArray = json.optJSONArray("custom_native");
+            if (customArray != null) {
+                for (int i = 0; i < customArray.length(); i++) {
+                    JSONObject obj = customArray.optJSONObject(i);
+                    if (obj != null) {
+                        model.customNativeList.add(new SmartWakeRemoteModel.CustomNativeAd(
+                                obj.optString("title", ""),
+                                obj.optString("description", ""),
+                                obj.optString("icon", ""),
+                                obj.optString("cta", ""),
+                                obj.optString("link", "")
+                        ));
+                    }
                 }
-            }
-
-            // News
-            JSONArray newsArr = json.optJSONArray("news");
-            if (newsArr != null) {
-                for (int i = 0; i < newsArr.length(); i++) {
-                    model.news.add(newsArr.getString(i));
+            } else {
+                JSONObject customObj = json.optJSONObject("custom_native");
+                if (customObj != null) {
+                    model.customNativeList.add(new SmartWakeRemoteModel.CustomNativeAd(
+                            customObj.optString("title", ""),
+                            customObj.optString("description", ""),
+                            customObj.optString("icon", ""),
+                            customObj.optString("cta", ""),
+                            customObj.optString("link", "")
+                    ));
                 }
-            }
-
-            // Sports
-            JSONObject sportsObj = json.optJSONObject("sports");
-            if (sportsObj != null) {
-                model.sportsCricket = sportsObj.optString("cricket", "");
-                model.sportsFootball = sportsObj.optString("football", "");
             }
 
             // Weather
@@ -152,14 +145,6 @@ public class SmartWakeApiClient {
                 model.weatherCondition = weatherObj.optString("condition", "");
             }
 
-            // Read More Links
-            JSONArray linksArr = json.optJSONArray("readmore_links");
-            if (linksArr != null) {
-                for (int i = 0; i < linksArr.length(); i++) {
-                    model.readMoreLinks.add(linksArr.getString(i));
-                }
-            }
-
             // Wallpapers
             JSONArray wallArr = json.optJSONArray("wallpapers");
             if (wallArr != null) {
@@ -168,7 +153,7 @@ public class SmartWakeApiClient {
                 }
             }
 
-            Log.d(TAG, "API CLIENT parseConfigJson DONE: displayMode=" + model.displayMode + ", showLockscreen=" + model.showLockscreen);
+            Log.d(TAG, "API CLIENT parseConfigJson DONE: displayMode=" + model.displayMode + ", showLockscreen=" + model.showLockscreen + ", customAdsCount=" + model.customNativeList.size());
         } catch (Exception e) {
             Log.e(TAG, "API CLIENT ERROR parsing JSON: " + e.getMessage());
         }

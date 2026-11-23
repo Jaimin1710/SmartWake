@@ -51,7 +51,7 @@
                 android:layout_marginTop="3dp"
                 android:ellipsize="end"
                 android:maxLines="2"
-                android:textColor="@color/smartwake_text_secondary"
+                android:textColor="@color/smartwake_text_primary"
                 android:textSize="12sp"
                 tools:text="The Adobe Creative Cloud Photography Plan Is A Comprehensive Software..." />
 
@@ -96,7 +96,7 @@
         android:layout_width="match_parent"
         android:layout_height="40dp"
         android:layout_marginTop="12dp"
-        android:background="#0F172A"
+        android:background="#4782FF"
         android:gravity="center"
         android:text="Install Now"
         android:textColor="#FFFFFF"

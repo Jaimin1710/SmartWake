@@ -23,7 +23,7 @@
         android:paddingEnd="20dp"
         android:paddingBottom="24dp">
 
-        <!-- Clock and Weather Header (Top) - Exactly Matching Screenshot 2 -->
+        <!-- Clock and Weather Header (Top) -->
         <LinearLayout
             android:id="@+id/smartwake_clock_container"
             android:layout_width="match_parent"
@@ -84,56 +84,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:minHeight="140dp"
             android:gravity="center"
-            android:orientation="vertical"
-            >
-
-            <!-- Quotes View -->
-            <TextView
-                android:id="@+id/smartwake_tv_quote"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:textColor="@color/smartwake_text_primary"
-                android:textSize="15sp"
-                android:textStyle="italic"
-                android:visibility="gone"
-                tools:text="“Believe you can and you are halfway there.”" />
-
-            <!-- News / Sports Feed View -->
-            <TextView
-                android:id="@+id/smartwake_tv_news_sports"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:gravity="center"
-                android:textColor="@color/smartwake_text_secondary"
-                android:textSize="13sp"
-                android:visibility="gone"
-                tools:text="IND 245/4 (42.2 ov) vs AUS" />
+            android:orientation="vertical">
 
             <!-- Native Ad Container -->
             <FrameLayout
                 android:id="@+id/smartwake_ad_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:visibility="gone" />
-
-            <!-- Read More Button -->
-            <TextView
-                android:id="@+id/smartwake_btn_read_more"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:padding="6dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:text="@string/smartwake_btn_read_more"
-                android:textColor="@color/smartwake_accent"
-                android:textSize="13sp"
-                android:textStyle="bold"
                 android:visibility="gone" />
 
         </LinearLayout>

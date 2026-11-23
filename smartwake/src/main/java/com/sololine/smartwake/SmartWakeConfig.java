@@ -11,7 +11,7 @@ public class SmartWakeConfig {
     private static final String KEY_LAST_CONFIG_JSON = "key_last_config_json";
     private static final String KEY_LAST_API_FETCH_TIME = "key_last_api_fetch_time";
     private static final String KEY_SCREEN_ON_COUNT = "key_screen_on_count";
-    private static final String KEY_READ_MORE_INDEX = "key_read_more_index";
+    private static final String KEY_CUSTOM_AD_INDEX = "key_custom_ad_index";
     private static final String KEY_SWIPE_DIRECTION = "key_swipe_direction";
     private static final String KEY_SHOW_CLOCK = "key_show_clock";
     private static final String KEY_VIBRATION = "key_vibration";
@@ -80,13 +80,13 @@ public class SmartWakeConfig {
         getPrefs(context).edit().putInt(KEY_SCREEN_ON_COUNT, count).apply();
     }
 
-    public static int getReadMoreIndex(Context context) {
-        return getPrefs(context).getInt(KEY_READ_MORE_INDEX, 0);
+    public static int getCustomAdIndex(Context context) {
+        return getPrefs(context).getInt(KEY_CUSTOM_AD_INDEX, 0);
     }
 
-    public static void incrementReadMoreIndex(Context context) {
-        int index = getReadMoreIndex(context) + 1;
-        getPrefs(context).edit().putInt(KEY_READ_MORE_INDEX, index).apply();
+    public static void incrementCustomAdIndex(Context context) {
+        int index = getCustomAdIndex(context) + 1;
+        getPrefs(context).edit().putInt(KEY_CUSTOM_AD_INDEX, index).apply();
     }
 
     public static int getSwipeDirection(Context context) {

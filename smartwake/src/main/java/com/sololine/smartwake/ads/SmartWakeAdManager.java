@@ -7,6 +7,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.sololine.smartwake.R;
@@ -371,30 +372,46 @@ public class SmartWakeAdManager {
     }
 
     private static View buildCustomNativeAdView(Context context, ViewGroup container, SmartWakeRemoteModel model, AdLoadCallback callback) {
-        String title = (model != null && model.customNativeTitle != null && !model.customNativeTitle.trim().isEmpty())
-                ? model.customNativeTitle : "Special Offer";
-        String desc = (model != null && model.customNativeDesc != null && !model.customNativeDesc.trim().isEmpty())
-                ? model.customNativeDesc : "Discover amazing features in our app!";
-        String cta = (model != null && model.customNativeCta != null && !model.customNativeCta.trim().isEmpty())
-                ? model.customNativeCta : "Install Now";
-        String link = (model != null && model.customNativeLink != null && !model.customNativeLink.trim().isEmpty())
-                ? model.customNativeLink : "https://play.google.com/store";
+        String title = "Special Offer";
+        String desc = "Discover amazing features in our app!";
+        String cta = "Install Now";
+        String link = "https://play.google.com/store";
+        String iconUrl = "";
+
+        if (model != null && model.customNativeList != null && !model.customNativeList.isEmpty()) {
+            int index = SmartWakeConfig.getCustomAdIndex(context);
+            SmartWakeConfig.incrementCustomAdIndex(context);
+            SmartWakeRemoteModel.CustomNativeAd adObj = model.customNativeList.get(index % model.customNativeList.size());
+            if (adObj != null) {
+                if (adObj.title != null && !adObj.title.trim().isEmpty()) title = adObj.title;
+                if (adObj.description != null && !adObj.description.trim().isEmpty()) desc = adObj.description;
+                if (adObj.cta != null && !adObj.cta.trim().isEmpty()) cta = adObj.cta;
+                if (adObj.link != null && !adObj.link.trim().isEmpty()) link = adObj.link;
+                if (adObj.icon != null && !adObj.icon.trim().isEmpty()) iconUrl = adObj.icon;
+            }
+        }
 
         try {
             View adView = LayoutInflater.from(context).inflate(R.layout.item_smart_wake_custom_ad, container, false);
 
             TextView titleTv = adView.findViewById(R.id.smartwake_ad_title);
             TextView descTv = adView.findViewById(R.id.smartwake_ad_desc);
+            ImageView iconIv = adView.findViewById(R.id.smartwake_ad_icon);
             TextView ctaBtn = adView.findViewById(R.id.smartwake_ad_cta);
 
             if (titleTv != null) titleTv.setText(title);
             if (descTv != null) descTv.setText(desc);
             if (ctaBtn != null) ctaBtn.setText(cta);
 
+            if (iconIv != null && !iconUrl.trim().isEmpty()) {
+                loadIconAsync(iconIv, iconUrl);
+            }
+
+            final String finalLink = link;
             View.OnClickListener clickListener = v -> {
-                if (link != null && !link.trim().isEmpty()) {
+                if (finalLink != null && !finalLink.trim().isEmpty()) {
                     try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(link));
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(finalLink));
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         context.startActivity(intent);
                     } catch (Exception ignored) {
@@ -411,5 +428,20 @@ public class SmartWakeAdManager {
             Log.e(TAG, "AD MANAGER ERROR building custom ad view: " + e.getMessage());
             return null;
         }
+    }
+
+    private static void loadIconAsync(ImageView imageView, String urlString) {
+        if (imageView == null || urlString == null || urlString.trim().isEmpty()) return;
+
+        new Thread(() -> {
+            try {
+                java.net.URL url = new java.net.URL(urlString);
+                android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeStream(url.openStream());
+                if (bitmap != null) {
+                    imageView.post(() -> imageView.setImageBitmap(bitmap));
+                }
+            } catch (Throwable ignored) {
+            }
+        }).start();
     }
 }
