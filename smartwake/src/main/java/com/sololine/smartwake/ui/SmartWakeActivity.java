@@ -20,6 +20,7 @@ import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
@@ -106,7 +107,7 @@ public class SmartWakeActivity extends Activity {
 
         View rootLayout = findViewById(R.id.smartwake_root_layout);
         if (rootLayout != null) {
-            rootLayout.setOnTouchListener(new SwipeDismissTouchListener(rootLayout, SmartWakeConfig.SWIPE_UP, view -> onLockScreenDismissed()));
+            setupVerticalSwipeToDismiss(rootLayout);
             rootLayout.setOnClickListener(v -> triggerFingerprintKeyguardPrompt());
         }
 
@@ -116,6 +117,38 @@ public class SmartWakeActivity extends Activity {
         if (listener != null) {
             listener.onScreenOn();
         }
+    }
+
+    private void setupVerticalSwipeToDismiss(View view) {
+        if (view == null) return;
+
+        view.setOnTouchListener(new View.OnTouchListener() {
+            private float startX, startY;
+            private static final int SWIPE_THRESHOLD = 90;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        startX = event.getX();
+                        startY = event.getY();
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        float endX = event.getX();
+                        float endY = event.getY();
+                        float deltaX = endX - startX;
+                        float deltaY = endY - startY;
+
+                        if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY < -SWIPE_THRESHOLD) {
+                            Log.d(TAG, "GESTURE: Vertical Swipe-Up detected! Dismissing lockscreen.");
+                            onLockScreenDismissed();
+                            return true;
+                        }
+                        break;
+                }
+                return false;
+            }
+        });
     }
 
     private void triggerFingerprintKeyguardPrompt() {
@@ -252,10 +285,17 @@ public class SmartWakeActivity extends Activity {
                 WallpaperPagerAdapter adapter = new WallpaperPagerAdapter(this, urls);
                 viewPager.setAdapter(adapter);
 
-                // Set initial position to middle for bi-directional infinite scrolling (left and right)
+                // Calculate fresh starting wallpaper based on screenOnCount so EVERY power-on gets a NEW wallpaper
                 if (!urls.isEmpty()) {
-                    int startPos = (Integer.MAX_VALUE / 2) - ((Integer.MAX_VALUE / 2) % urls.size());
+                    int count = SmartWakeConfig.getScreenOnCount(this);
+                    int wallpaperOffset = count % urls.size();
+                    int startPos = (Integer.MAX_VALUE / 2) - ((Integer.MAX_VALUE / 2) % urls.size()) + wallpaperOffset;
                     viewPager.setCurrentItem(startPos, false);
+                }
+
+                // Attach vertical swipe-up gesture listener to ViewPager's inner RecyclerView
+                if (viewPager.getChildCount() > 0) {
+                    setupVerticalSwipeToDismiss(viewPager.getChildAt(0));
                 }
             }
         } else if (viewPager != null) {
