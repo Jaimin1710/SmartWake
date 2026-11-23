@@ -264,6 +264,9 @@ public class SmartWakeActivity extends Activity {
         boolean isFullScreen = "FULL_SCREEN".equalsIgnoreCase(model.displayMode);
         Log.d(TAG, "setupServerUI displayMode: " + model.displayMode + ", isFullScreen: " + isFullScreen);
 
+        // Log Firebase Analytics event with mode suffix (smartwake_show_fullscreen / smartwake_show_centerdialog)
+        SmartWakeAnalytics.logShow(this, model.displayMode);
+
         // 1. Clock Container & Bottom Swipe Hint ALWAYS VISIBLE
         if (clockContainer != null) clockContainer.setVisibility(View.VISIBLE);
         if (swipeHintContainer != null) swipeHintContainer.setVisibility(View.VISIBLE);

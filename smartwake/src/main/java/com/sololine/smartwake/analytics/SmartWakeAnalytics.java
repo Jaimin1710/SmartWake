@@ -10,8 +10,11 @@ public class SmartWakeAnalytics {
 
     private static final String TAG = "SmartWakeAnalytics";
 
-    // 4 Core Firebase Events (All starting with smartwake_)
+    // Dynamic Display Mode Show Events
     public static final String EVENT_SHOW = "smartwake_show";
+    public static final String EVENT_SHOW_FULLSCREEN = "smartwake_show_fullscreen";
+    public static final String EVENT_SHOW_CENTERDIALOG = "smartwake_show_centerdialog";
+
     public static final String EVENT_DISMISS = "smartwake_dismiss";
     public static final String EVENT_AD_SHOW = "smartwake_ad_show";
     public static final String EVENT_AD_CLICK = "smartwake_ad_click";
@@ -32,6 +35,14 @@ public class SmartWakeAnalytics {
         } catch (Throwable e) {
             Log.d(TAG, "Firebase Analytics not present or error logging event: " + eventName);
         }
+    }
+
+    public static void logShow(Context context, String displayMode) {
+        boolean isFullScreen = "FULL_SCREEN".equalsIgnoreCase(displayMode);
+        String eventName = isFullScreen ? EVENT_SHOW_FULLSCREEN : EVENT_SHOW_CENTERDIALOG;
+        Bundle bundle = new Bundle();
+        bundle.putString("display_mode", isFullScreen ? "fullscreen" : "centerdialog");
+        logEvent(context, eventName, bundle);
     }
 
     public static void logAdShow(Context context, String adType) {
