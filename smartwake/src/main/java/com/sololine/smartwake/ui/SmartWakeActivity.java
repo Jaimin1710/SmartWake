@@ -370,45 +370,47 @@ public class SmartWakeActivity extends Activity {
     private void launchCamera() {
         triggerHapticFeedback();
 
-        // 1. Request Keyguard Dismissal so Samsung One UI & Android 13/14 allow Camera on top
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+        boolean launched = false;
+
+        // Try 1: Samsung Official Secure LockScreen Camera Action (Samsung Galaxy S23 Ultra / One UI)
+        try {
+            Intent samsungSecure = new Intent("com.sec.android.app.camera.action.STILL_IMAGE_CAMERA_SECURE");
+            samsungSecure.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(samsungSecure);
+            launched = true;
+            Log.d(TAG, "Launched Samsung action STILL_IMAGE_CAMERA_SECURE.");
+        } catch (Exception e1) {
+            Log.w(TAG, "Samsung action secure camera failed: " + e1.getMessage());
+        }
+
+        // Try 2: Android Standard Secure LockScreen Camera Intent with Samsung Package
+        if (!launched) {
             try {
-                KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-                if (km != null) {
-                    km.requestDismissKeyguard(this, null);
-                }
-            } catch (Exception ignored) {
+                Intent secureIntent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE);
+                secureIntent.setPackage("com.sec.android.app.camera");
+                secureIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(secureIntent);
+                launched = true;
+                Log.d(TAG, "Launched Secure Camera Intent with Samsung package.");
+            } catch (Exception e2) {
+                Log.w(TAG, "Secure Camera Intent with Samsung package failed: " + e2.getMessage());
             }
         }
 
-        boolean launched = false;
-
-        // Try 1: Samsung Native Camera Component (Samsung Galaxy S23 Ultra / One UI)
-        try {
-            Intent samsungIntent = new Intent();
-            samsungIntent.setComponent(new ComponentName("com.sec.android.app.camera", "com.sec.android.app.camera.Camera"));
-            samsungIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            startActivity(samsungIntent);
-            launched = true;
-            Log.d(TAG, "Launched Samsung native camera component.");
-        } catch (Exception e1) {
-            Log.w(TAG, "Samsung native camera component failed: " + e1.getMessage());
-        }
-
-        // Try 2: Secure LockScreen Camera Intent
+        // Try 3: General Android Secure LockScreen Camera Intent (All OEMs)
         if (!launched) {
             try {
                 Intent secureIntent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE);
                 secureIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(secureIntent);
                 launched = true;
-                Log.d(TAG, "Launched secure camera intent.");
-            } catch (Exception e2) {
-                Log.w(TAG, "Secure camera intent failed: " + e2.getMessage());
+                Log.d(TAG, "Launched standard Android secure camera intent.");
+            } catch (Exception e3) {
+                Log.w(TAG, "Standard secure camera intent failed: " + e3.getMessage());
             }
         }
 
-        // Try 3: Standard Still Image Camera Intent
+        // Try 4: Standard Still Image Camera Intent
         if (!launched) {
             try {
                 Intent standardIntent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
@@ -416,26 +418,17 @@ public class SmartWakeActivity extends Activity {
                 startActivity(standardIntent);
                 launched = true;
                 Log.d(TAG, "Launched standard camera intent.");
-            } catch (Exception e3) {
-                Log.w(TAG, "Standard camera intent failed: " + e3.getMessage());
-            }
-        }
-
-        // Try 4: Fallback Action Capture Intent
-        if (!launched) {
-            try {
-                Intent captureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                captureIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                startActivity(captureIntent);
-                launched = true;
-                Log.d(TAG, "Launched action capture intent.");
             } catch (Exception e4) {
-                Log.e(TAG, "All camera intents failed: " + e4.getMessage());
+                Log.w(TAG, "Standard camera intent failed: " + e4.getMessage());
             }
         }
 
-        // Always dismiss SmartWakeActivity so camera is not hidden underneath
-        onLockScreenDismissed();
+        // Finish SmartWakeActivity WITHOUT requesting keyguard unlock so device stays securely locked
+        if (keyguardHandler != null && keyguardCheckRunnable != null) {
+            keyguardHandler.removeCallbacks(keyguardCheckRunnable);
+        }
+        finish();
+        overridePendingTransition(0, android.R.anim.fade_out);
     }
 
     private void openReadMoreUrl(List<String> links) {
