@@ -107,8 +107,9 @@ public class SmartWake {
         try {
             Intent intent = new Intent(appContext, SmartWakeActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                    | Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    | Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+                    | Intent.FLAG_ACTIVITY_NO_HISTORY
+                    | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
 
             int flags = android.app.PendingIntent.FLAG_UPDATE_CURRENT;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

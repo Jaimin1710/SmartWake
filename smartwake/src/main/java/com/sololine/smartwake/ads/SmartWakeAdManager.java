@@ -73,13 +73,19 @@ public class SmartWakeAdManager {
         if (model.admobNative != null && !model.admobNative.trim().isEmpty() && isAdMobAvailable()) {
             if (cachedAdMobNativeAd == null && !isAdMobLoading) {
                 isAdMobLoading = true;
-                Log.d(TAG, "AD MANAGER: Preloading AdMob Native Ad in background...");
+                Log.d(TAG, "AD MANAGER: Preloading fresh AdMob Native Ad in background...");
                 AdMobHelper.loadNativeAd(context, model.admobNative, new AdMobHelper.AdMobCallback() {
                     @Override
                     public void onSuccess(com.google.android.gms.ads.nativead.NativeAd nativeAd) {
+                        if (cachedAdMobNativeAd instanceof com.google.android.gms.ads.nativead.NativeAd) {
+                            try {
+                                ((com.google.android.gms.ads.nativead.NativeAd) cachedAdMobNativeAd).destroy();
+                            } catch (Throwable ignored) {
+                            }
+                        }
                         cachedAdMobNativeAd = nativeAd;
                         isAdMobLoading = false;
-                        Log.d(TAG, "AD MANAGER: Preloaded AdMob Native Ad successfully into memory cache!");
+                        Log.d(TAG, "AD MANAGER: Preloaded fresh AdMob Native Ad successfully into memory cache!");
                     }
 
                     @Override
@@ -101,7 +107,7 @@ public class SmartWakeAdManager {
         if (model.fbNative != null && !model.fbNative.trim().isEmpty() && isTradPlusAvailable()) {
             if (cachedTradPlusNativeAd == null && !isTradPlusLoading) {
                 isTradPlusLoading = true;
-                Log.d(TAG, "AD MANAGER: Preloading TradPlus/Facebook Native Ad in background...");
+                Log.d(TAG, "AD MANAGER: Preloading fresh TradPlus/Facebook Native Ad in background...");
                 preloadTradPlusFacebookNative(context, model.fbNative);
             }
         }
@@ -172,7 +178,7 @@ public class SmartWakeAdManager {
         if (primaryType == 1 && cachedAdMobNativeAd instanceof com.google.android.gms.ads.nativead.NativeAd && isAdMobAvailable()) {
             Log.d(TAG, "AD MANAGER: Displaying preloaded AdMob Native Ad instantly from memory cache!");
             com.google.android.gms.ads.nativead.NativeAd nativeAd = (com.google.android.gms.ads.nativead.NativeAd) cachedAdMobNativeAd;
-            cachedAdMobNativeAd = null; // Consume cache so next screen-on gets a new ad
+            cachedAdMobNativeAd = null; // Consume cache immediately so next screen-on gets a new fresh ad
 
             View renderedView = AdMobHelper.renderNativeAdView(context, container, nativeAd);
             if (renderedView != null) {
