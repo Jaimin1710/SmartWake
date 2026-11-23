@@ -429,7 +429,7 @@ public class SmartWakeAdManager {
                 if (finalLink != null && !finalLink.trim().isEmpty()) {
                     try {
                         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(finalLink));
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
                         context.startActivity(intent);
                     } catch (Exception ignored) {
                     }

@@ -16,14 +16,14 @@
     <application
         android:usesCleartextTraffic="true">
 
-        <!-- Lock Screen Activity: Excluded from Recents and Single Instance -->
+        <!-- Lock Screen Activity: Completely isolated task, excluded from recents -->
         <activity
             android:name=".ui.SmartWakeActivity"
             android:exported="false"
             android:launchMode="singleInstance"
             android:excludeFromRecents="true"
             android:noHistory="true"
-            android:taskAffinity=""
+            android:taskAffinity="com.sololine.smartwake.lockscreen.task"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:theme="@style/Theme.SmartWake.LockScreen"
