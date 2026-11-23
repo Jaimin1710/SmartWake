@@ -245,7 +245,18 @@ public class SmartWakeActivity extends Activity {
                     urls.add("https://images.unsplash.com/photo-1506744038136-46273834b3fb");
                     urls.add("https://images.unsplash.com/photo-1511884642898-4c92249e20b6");
                 }
-                viewPager.setAdapter(new WallpaperPagerAdapter(this, urls));
+
+                // Preload wallpapers in background to guarantee no blank/empty screens
+                com.sololine.smartwake.content.WallpaperCacheManager.preloadWallpapersAsync(this, urls);
+
+                WallpaperPagerAdapter adapter = new WallpaperPagerAdapter(this, urls);
+                viewPager.setAdapter(adapter);
+
+                // Set initial position to middle for bi-directional infinite scrolling (left and right)
+                if (!urls.isEmpty()) {
+                    int startPos = (Integer.MAX_VALUE / 2) - ((Integer.MAX_VALUE / 2) % urls.size());
+                    viewPager.setCurrentItem(startPos, false);
+                }
             }
         } else if (viewPager != null) {
             viewPager.setVisibility(View.GONE);
