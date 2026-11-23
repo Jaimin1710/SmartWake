@@ -96,6 +96,11 @@ public class SmartWake {
     public static void launchLockScreen(Context context) {
         if (context == null) return;
 
+        if (com.sololine.smartwake.util.SmartWakeGuard.shouldSkipSmartWake(context)) {
+            Log.d(TAG, "LAUNCH LOCKSCREEN: Call, VoIP, or Alarm active. Skipping launch.");
+            return;
+        }
+
         Log.d(TAG, "LAUNCH LOCKSCREEN: Triggering SmartWakeActivity...");
         Context appContext = context.getApplicationContext();
 

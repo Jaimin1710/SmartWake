@@ -54,6 +54,12 @@ public class SmartWakeActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        if (com.sololine.smartwake.util.SmartWakeGuard.shouldSkipSmartWake(this)) {
+            Log.d(TAG, "ACTIVITY: Active call, VoIP call, or Alarm detected. Closing immediately.");
+            finish();
+            return;
+        }
+
         setupLockScreenFlags();
         hideSystemNavigationBar();
         super.onCreate(savedInstanceState);
@@ -145,6 +151,11 @@ public class SmartWakeActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (com.sololine.smartwake.util.SmartWakeGuard.shouldSkipSmartWake(this)) {
+            Log.d(TAG, "ACTIVITY onResume: Active call, VoIP call, or Alarm detected. Closing immediately.");
+            finish();
+            return;
+        }
         hideSystemNavigationBar();
         checkInstantUnlock();
     }
