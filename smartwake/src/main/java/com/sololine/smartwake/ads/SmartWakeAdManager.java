@@ -121,16 +121,17 @@ public class SmartWakeAdManager {
             Class<?> listenerClass = Class.forName("com.tradplus.ads.open.nativead.TPNativeAdListener");
 
             java.lang.reflect.InvocationHandler handler = (proxy, method, args) -> {
-                if ("onAdLoaded".equals(method.getName())) {
+                String mName = method.getName().toLowerCase();
+                if (mName.contains("loaded")) {
                     cachedTradPlusNativeAd = tpNativeObj;
                     isTradPlusLoading = false;
                     Log.d(TAG, "AD MANAGER: Preloaded TradPlus Facebook Native Ad into memory cache!");
-                } else if ("onAdClicked".equals(method.getName())) {
+                } else if (mName.contains("click")) {
                     SmartWakeAnalytics.logAdClick(context, "facebook");
                     notifyAdClicked();
-                } else if ("onAdFailed".equals(method.getName())) {
+                } else if (mName.contains("fail") || mName.contains("error")) {
                     isTradPlusLoading = false;
-                    Log.w(TAG, "AD MANAGER: Preload TradPlus Facebook Native Ad failed.");
+                    Log.w(TAG, "AD MANAGER: Preload TradPlus Facebook Native Ad failed: " + (args != null && args.length > 0 ? args[0] : ""));
                 }
                 return null;
             };
@@ -340,20 +341,23 @@ public class SmartWakeAdManager {
             Class<?> listenerClass = Class.forName("com.tradplus.ads.open.nativead.TPNativeAdListener");
 
             java.lang.reflect.InvocationHandler handler = (proxy, method, args) -> {
-                if ("onAdLoaded".equals(method.getName())) {
+                String mName = method.getName().toLowerCase();
+                if (mName.contains("loaded")) {
                     container.post(() -> {
                         try {
                             Method showAdMethod = tpNativeClass.getMethod("showAd", ViewGroup.class);
                             showAdMethod.invoke(tpNativeObj, container);
                             if (callback != null) callback.onAdLoaded(container);
                         } catch (Exception e) {
+                            Log.w(TAG, "AD MANAGER: TradPlus showAd reflection failed: " + e.getMessage());
                             if (callback != null) callback.onAdFailedAll();
                         }
                     });
-                } else if ("onAdClicked".equals(method.getName())) {
+                } else if (mName.contains("click")) {
                     SmartWakeAnalytics.logAdClick(context, "facebook");
                     notifyAdClicked();
-                } else if ("onAdFailed".equals(method.getName())) {
+                } else if (mName.contains("fail") || mName.contains("error")) {
+                    Log.w(TAG, "AD MANAGER: TradPlus onAdFailed: " + (args != null && args.length > 0 ? args[0] : ""));
                     if (callback != null) callback.onAdFailedAll();
                 }
                 return null;
@@ -371,7 +375,7 @@ public class SmartWakeAdManager {
             Method loadAdMethod = tpNativeClass.getMethod("loadAd");
             loadAdMethod.invoke(tpNativeObj);
 
-            Log.d(TAG, "AD MANAGER: TradPlus Facebook Native loadAd initiated.");
+            Log.d(TAG, "AD MANAGER: TradPlus Facebook Native loadAd initiated for ID: " + placementId);
         } catch (Throwable e) {
             Log.w(TAG, "AD MANAGER: TradPlus reflection failed: " + e.getMessage());
             loadFacebookNative(context, container, placementId, callback);
@@ -435,7 +439,11 @@ public class SmartWakeAdManager {
                 if (finalLink != null && !finalLink.trim().isEmpty()) {
                     try {
                         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(finalLink));
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                                | Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+                                | Intent.FLAG_ACTIVITY_NO_HISTORY
+                                | Intent.FLAG_ACTIVITY_NEW_DOCUMENT
+                                | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
                         context.startActivity(intent);
                     } catch (Exception ignored) {
                     }
