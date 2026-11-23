@@ -25,7 +25,7 @@ Add SmartWake SDK to your app's `build.gradle.kts` (or `build.gradle`):
 
 ```kotlin
 dependencies {
-    implementation("com.github.Jaimin1710.SmartWake:smartwake:1.3.9")
+    implementation("com.github.Jaimin1710.SmartWake:smartwake:1.4.0")
 }
 ```
 

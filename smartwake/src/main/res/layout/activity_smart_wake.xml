@@ -29,7 +29,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentTop="true"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="30dp"
             android:gravity="center"
             android:orientation="vertical">
 
@@ -41,7 +41,7 @@
                 android:format12Hour="hh:mm"
                 android:format24Hour="HH:mm"
                 android:textColor="#FFFFFF"
-                android:textSize="84sp"
+                android:textSize="100sp"
                 android:textStyle="bold"
                 tools:text="11:24" />
 
@@ -85,10 +85,9 @@
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:minHeight="140dp"
-            android:background="@drawable/bg_smartwake_card"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="16dp">
+            >
 
             <!-- Quotes View -->
             <TextView
