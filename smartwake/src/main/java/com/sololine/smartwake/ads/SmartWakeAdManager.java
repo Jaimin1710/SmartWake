@@ -12,6 +12,7 @@ import android.widget.TextView;
 
 import com.sololine.smartwake.R;
 import com.sololine.smartwake.SmartWakeConfig;
+import com.sololine.smartwake.analytics.SmartWakeAnalytics;
 import com.sololine.smartwake.model.SmartWakeRemoteModel;
 
 import java.lang.reflect.Method;
@@ -29,6 +30,7 @@ public class SmartWakeAdManager {
     private static boolean isTradPlusLoading = false;
 
     private static AdLoadCallback activeAdCallback = null;
+    private static String activeAdType = "unknown";
 
     public interface AdLoadCallback {
         void onAdLoaded(View adView);
@@ -38,7 +40,7 @@ public class SmartWakeAdManager {
 
     public static void notifyAdClicked() {
         if (activeAdCallback != null) {
-            Log.d(TAG, "AD MANAGER: notifyAdClicked triggered! Notifying active listener to dismiss lockscreen.");
+            Log.d(TAG, "AD MANAGER: notifyAdClicked triggered! Notifying active listener.");
             activeAdCallback.onAdClicked();
         }
     }
@@ -88,6 +90,7 @@ public class SmartWakeAdManager {
 
                     @Override
                     public void onAdClicked() {
+                        SmartWakeAnalytics.logAdClick(context, "admob");
                         notifyAdClicked();
                     }
                 });
@@ -117,6 +120,7 @@ public class SmartWakeAdManager {
                     isTradPlusLoading = false;
                     Log.d(TAG, "AD MANAGER: Preloaded TradPlus Facebook Native Ad into memory cache!");
                 } else if ("onAdClicked".equals(method.getName())) {
+                    SmartWakeAnalytics.logAdClick(context, "facebook");
                     notifyAdClicked();
                 } else if ("onAdFailed".equals(method.getName())) {
                     isTradPlusLoading = false;
@@ -172,8 +176,10 @@ public class SmartWakeAdManager {
 
             View renderedView = AdMobHelper.renderNativeAdView(context, container, nativeAd);
             if (renderedView != null) {
+                activeAdType = "admob";
                 container.removeAllViews();
                 container.addView(renderedView);
+                SmartWakeAnalytics.logAdShow(context, "admob");
                 if (callback != null) callback.onAdLoaded(renderedView);
 
                 // Immediately trigger background preloading for the NEXT screen-on event!
@@ -191,8 +197,10 @@ public class SmartWakeAdManager {
             try {
                 Class<?> tpNativeClass = Class.forName("com.tradplus.ads.open.nativead.TPNative");
                 Method showAdMethod = tpNativeClass.getMethod("showAd", ViewGroup.class);
+                activeAdType = "facebook";
                 container.removeAllViews();
                 showAdMethod.invoke(tpNativeObj, container);
+                SmartWakeAnalytics.logAdShow(context, "facebook");
                 if (callback != null) callback.onAdLoaded(container);
 
                 // Immediately trigger background preloading for the NEXT screen-on event!
@@ -242,8 +250,10 @@ public class SmartWakeAdManager {
                         public void onSuccess(com.google.android.gms.ads.nativead.NativeAd nativeAd) {
                             View adView = AdMobHelper.renderNativeAdView(context, container, nativeAd);
                             if (adView != null) {
+                                activeAdType = "admob";
                                 container.removeAllViews();
                                 container.addView(adView);
+                                SmartWakeAnalytics.logAdShow(context, "admob");
                                 if (callback != null) callback.onAdLoaded(adView);
 
                                 // Trigger preloading for NEXT screen-on event!
@@ -260,6 +270,7 @@ public class SmartWakeAdManager {
 
                         @Override
                         public void onAdClicked() {
+                            SmartWakeAnalytics.logAdClick(context, "admob");
                             notifyAdClicked();
                         }
                     });
@@ -274,6 +285,8 @@ public class SmartWakeAdManager {
                     loadTradPlusFacebookNative(context, container, model.fbNative, new AdLoadCallback() {
                         @Override
                         public void onAdLoaded(View adView) {
+                            activeAdType = "facebook";
+                            SmartWakeAnalytics.logAdShow(context, "facebook");
                             if (callback != null) callback.onAdLoaded(adView);
                             // Trigger preloading for NEXT screen-on event!
                             preloadAds(context, model);
@@ -286,6 +299,7 @@ public class SmartWakeAdManager {
 
                         @Override
                         public void onAdClicked() {
+                            SmartWakeAnalytics.logAdClick(context, "facebook");
                             notifyAdClicked();
                         }
                     });
@@ -296,8 +310,10 @@ public class SmartWakeAdManager {
             case 3: // Custom Native
                 View customView = buildCustomNativeAdView(context, container, model, callback);
                 if (customView != null) {
+                    activeAdType = "custom";
                     container.removeAllViews();
                     container.addView(customView);
+                    SmartWakeAnalytics.logAdShow(context, "custom");
                     if (callback != null) callback.onAdLoaded(customView);
 
                     // Trigger preloading for NEXT screen-on event!
@@ -329,6 +345,7 @@ public class SmartWakeAdManager {
                         }
                     });
                 } else if ("onAdClicked".equals(method.getName())) {
+                    SmartWakeAnalytics.logAdClick(context, "facebook");
                     notifyAdClicked();
                 } else if ("onAdFailed".equals(method.getName())) {
                     if (callback != null) callback.onAdFailedAll();
@@ -417,6 +434,7 @@ public class SmartWakeAdManager {
                     } catch (Exception ignored) {
                     }
                 }
+                SmartWakeAnalytics.logAdClick(context, "custom");
                 notifyAdClicked();
             };
 
