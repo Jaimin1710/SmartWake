@@ -2,7 +2,6 @@ package com.sololine.smartwake.ads;
 
 import android.content.Context;
 import android.util.Log;
-import android.view.View;
 import android.view.ViewGroup;
 
 import com.sololine.smartwake.R;
@@ -12,12 +11,9 @@ import com.tradplus.ads.base.bean.TPBaseAd;
 import com.tradplus.ads.open.nativead.NativeAdListener;
 import com.tradplus.ads.open.nativead.TPNative;
 
-import java.lang.reflect.Method;
-
 public class TradPlusHelper {
 
     private static final String TAG = "SmartWake";
-    private static boolean fbSdkInitialized = false;
 
     public interface TradPlusCallback {
         void onSuccess(TPNative tpNative);
@@ -26,23 +22,8 @@ public class TradPlusHelper {
     }
 
     public static void loadNativeAd(Context context, String placementId, TradPlusCallback callback) {
-        if (context == null || placementId == null || placementId.trim().isEmpty()) {
-            if (callback != null) callback.onFailure("Invalid params");
-            return;
-        }
-
         try {
-            if (!fbSdkInitialized) {
-                try {
-                    Class<?> fbAdsClass = Class.forName("com.facebook.ads.AudienceNetworkAds");
-                    Method initMethod = fbAdsClass.getMethod("initialize", Context.class);
-                    initMethod.invoke(null, context.getApplicationContext());
-                    fbSdkInitialized = true;
-                } catch (Throwable ignored) {
-                }
-            }
-
-            TPNative nativeAd = new TPNative(context.getApplicationContext(), placementId);
+            TPNative nativeAd = new TPNative(context, placementId);
             nativeAd.setAdListener(new NativeAdListener() {
                 @Override
                 public void onAdLoaded(TPAdInfo tpAdInfo, TPBaseAd tpBaseAd) {
@@ -81,9 +62,9 @@ public class TradPlusHelper {
         if (container == null || nativeAd == null) return false;
         try {
             container.removeAllViews();
-            container.setVisibility(View.VISIBLE);
+            container.setVisibility(ViewGroup.VISIBLE);
 
-            nativeAd.showAd(container, R.layout.item_smart_wake_custom_ad, "");
+            nativeAd.showAd(container, R.layout.item_smart_wake_custom_ad);
             Log.d(TAG, "TRADPLUS HELPER: showAd rendered successfully!");
             return true;
         } catch (Throwable t) {
