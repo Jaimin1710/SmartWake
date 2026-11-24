@@ -54,7 +54,11 @@ public class SmartWake {
 
         Intent serviceIntent = new Intent(appContext, SmartWakeService.class);
         try {
-            appContext.startService(serviceIntent);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                appContext.startForegroundService(serviceIntent);
+            } else {
+                appContext.startService(serviceIntent);
+            }
             Log.d(TAG, "START: SmartWake background service launched successfully.");
         } catch (Exception e) {
             Log.e(TAG, "START ERROR: Failed to start SmartWake service", e);
