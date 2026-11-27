@@ -44,7 +44,11 @@ public class SmartWakeService extends Service {
             try {
                 createSilentNotificationChannel();
                 Notification notification = createSilentNotification();
-                startForeground(NOTIFICATION_ID, notification);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+                } else {
+                    startForeground(NOTIFICATION_ID, notification);
+                }
                 Log.d(TAG, "SERVICE startForeground silent notification active.");
             } catch (Exception e) {
                 Log.w(TAG, "SERVICE startForeground notification skipped: " + e.getMessage());
